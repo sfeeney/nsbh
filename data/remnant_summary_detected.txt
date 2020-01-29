@@ -1,0 +1,1632 @@
+Sim #2
+BH = 8.76, NS = 1.31
+SNR = 40.08
+Remnant = 0.0
+
+Sim #5
+BH = 9.59, NS = 1.23
+SNR = 60.482
+Remnant = 0.0
+
+Sim #11
+BH = 8.33, NS = 1.32
+SNR = 13.391
+Remnant = 0.0
+
+Sim #14
+BH = 7.86, NS = 1.15
+SNR = 16.42
+Remnant = 0.0
+
+Sim #1007
+BH = 6.59, NS = 1.20
+SNR = 12.996
+Remnant = 0.000240659993919
+
+Sim #1009
+BH = 8.97, NS = 1.35
+SNR = 13.405
+Remnant = 0.0
+
+Sim #1018
+BH = 8.20, NS = 1.46
+SNR = 12.067
+Remnant = 0.0
+
+Sim #1019
+BH = 8.71, NS = 1.45
+SNR = 18.806
+Remnant = 0.0
+
+Sim #1039
+BH = 6.19, NS = 1.35
+SNR = 61.774
+Remnant = 0.0
+
+Sim #1040
+BH = 8.80, NS = 1.53
+SNR = 13.743
+Remnant = 0.0
+
+Sim #109
+BH = 8.43, NS = 1.67
+SNR = 32.864
+Remnant = 0.0
+
+Sim #123
+BH = 9.54, NS = 1.31
+SNR = 18.469
+Remnant = 0.0
+
+Sim #129
+BH = 6.53, NS = 1.06
+SNR = 23.297
+Remnant = 0.0122957750685
+
+Sim #1085
+BH = 7.27, NS = 1.32
+SNR = 13.306
+Remnant = 0.0
+
+Sim #1088
+BH = 9.50, NS = 1.43
+SNR = 12.639
+Remnant = 0.0
+
+Sim #1092
+BH = 8.94, NS = 1.50
+SNR = 17.673
+Remnant = 0.0
+
+Sim #1094
+BH = 9.18, NS = 1.14
+SNR = 15.893
+Remnant = 0.0
+
+Sim #1099
+BH = 6.51, NS = 1.27
+SNR = 13.938
+Remnant = 0.0653407394663
+
+Sim #1107
+BH = 7.01, NS = 1.06
+SNR = 12.871
+Remnant = 0.0250718064688
+
+Sim #1112
+BH = 9.18, NS = 1.18
+SNR = 13.881
+Remnant = 0.0
+
+Sim #1117
+BH = 6.54, NS = 1.25
+SNR = 16.0
+Remnant = 0.0
+
+Sim #1132
+BH = 7.37, NS = 1.31
+SNR = 15.393
+Remnant = 0.0
+
+Sim #1153
+BH = 9.39, NS = 1.14
+SNR = 16.778
+Remnant = 0.0
+
+Sim #1168
+BH = 9.68, NS = 1.42
+SNR = 13.155
+Remnant = 0.0
+
+Sim #1178
+BH = 8.73, NS = 1.26
+SNR = 12.674
+Remnant = 0.00281213191937
+
+Sim #1182
+BH = 6.25, NS = 1.34
+SNR = 12.993
+Remnant = 0.0
+
+Sim #1187
+BH = 7.51, NS = 1.38
+SNR = 53.613
+Remnant = 0.0
+
+Sim #1190
+BH = 6.40, NS = 1.57
+SNR = 16.043
+Remnant = 0.0
+
+Sim #1204
+BH = 8.16, NS = 1.24
+SNR = 14.741
+Remnant = 0.0
+
+Sim #1207
+BH = 7.92, NS = 1.45
+SNR = 17.724
+Remnant = 0.0
+
+Sim #1232
+BH = 7.46, NS = 1.32
+SNR = 14.667
+Remnant = 0.0120281862603
+
+Sim #1240
+BH = 8.66, NS = 1.31
+SNR = 15.756
+Remnant = 0.0
+
+Sim #1242
+BH = 8.27, NS = 1.44
+SNR = 20.585
+Remnant = 0.0
+
+Sim #1261
+BH = 7.59, NS = 1.27
+SNR = 12.809
+Remnant = 0.0
+
+Sim #1266
+BH = 9.71, NS = 1.44
+SNR = 16.089
+Remnant = 0.0
+
+Sim #1267
+BH = 8.92, NS = 1.25
+SNR = 16.974
+Remnant = 0.0
+
+Sim #1273
+BH = 6.60, NS = 1.57
+SNR = 13.543
+Remnant = 0.0
+
+Sim #1286
+BH = 9.37, NS = 1.31
+SNR = 26.843
+Remnant = 0.0
+
+Sim #1291
+BH = 7.79, NS = 1.56
+SNR = 13.952
+Remnant = 0.0
+
+Sim #1293
+BH = 6.44, NS = 1.37
+SNR = 14.079
+Remnant = 0.00427349423377
+
+Sim #1299
+BH = 6.85, NS = 1.35
+SNR = 14.897
+Remnant = 0.0
+
+Sim #1317
+BH = 7.37, NS = 1.29
+SNR = 13.895
+Remnant = 0.0
+
+Sim #1325
+BH = 7.58, NS = 1.25
+SNR = 18.072
+Remnant = 0.0
+
+Sim #1351
+BH = 7.39, NS = 1.09
+SNR = 15.578
+Remnant = 0.0390066346309
+
+Sim #1354
+BH = 9.51, NS = 1.10
+SNR = 18.629
+Remnant = 0.0
+
+Sim #1388
+BH = 7.29, NS = 1.29
+SNR = 18.069
+Remnant = 0.0
+
+Sim #1410
+BH = 8.73, NS = 1.61
+SNR = 17.069
+Remnant = 0.0
+
+Sim #1417
+BH = 7.68, NS = 1.24
+SNR = 18.043
+Remnant = 0.0
+
+Sim #1424
+BH = 8.87, NS = 1.23
+SNR = 12.65
+Remnant = 0.0
+
+Sim #1455
+BH = 8.11, NS = 1.50
+SNR = 27.441
+Remnant = 0.0
+
+Sim #1457
+BH = 6.60, NS = 1.50
+SNR = 20.862
+Remnant = 0.0
+
+Sim #1458
+BH = 7.03, NS = 1.26
+SNR = 15.333
+Remnant = 0.000107684838628
+
+Sim #1463
+BH = 7.06, NS = 1.54
+SNR = 13.11
+Remnant = 0.0
+
+Sim #1488
+BH = 9.20, NS = 1.29
+SNR = 12.507
+Remnant = 0.000302068701176
+
+Sim #1518
+BH = 8.34, NS = 1.51
+SNR = 12.191
+Remnant = 0.0
+
+Sim #1524
+BH = 9.57, NS = 1.15
+SNR = 28.121
+Remnant = 0.0
+
+Sim #152
+BH = 7.89, NS = 1.30
+SNR = 13.299
+Remnant = 0.0
+
+Sim #160
+BH = 10.26, NS = 1.39
+SNR = 14.572
+Remnant = 0.0
+
+Sim #168
+BH = 9.55, NS = 1.48
+SNR = 21.854
+Remnant = 0.0
+
+Sim #171
+BH = 8.35, NS = 1.34
+SNR = 47.826
+Remnant = 0.0
+
+Sim #176
+BH = 8.09, NS = 1.35
+SNR = 12.141
+Remnant = 0.0
+
+Sim #193
+BH = 6.94, NS = 1.24
+SNR = 14.246
+Remnant = 0.0
+
+Sim #196
+BH = 8.73, NS = 1.43
+SNR = 12.565
+Remnant = 0.0
+
+Sim #1554
+BH = 6.35, NS = 1.39
+SNR = 12.38
+Remnant = 0.0137255287294
+
+Sim #1572
+BH = 7.88, NS = 1.45
+SNR = 29.501
+Remnant = 0.0
+
+Sim #1595
+BH = 8.12, NS = 1.31
+SNR = 13.09
+Remnant = 0.0
+
+Sim #1606
+BH = 8.72, NS = 1.20
+SNR = 12.628
+Remnant = 0.0
+
+Sim #1610
+BH = 7.25, NS = 1.26
+SNR = 16.62
+Remnant = 0.0
+
+Sim #1613
+BH = 7.74, NS = 1.41
+SNR = 13.47
+Remnant = 0.0
+
+Sim #1629
+BH = 8.00, NS = 1.29
+SNR = 15.756
+Remnant = 0.0
+
+Sim #1630
+BH = 9.77, NS = 1.20
+SNR = 17.554
+Remnant = 0.0
+
+Sim #1660
+BH = 6.78, NS = 1.56
+SNR = 12.134
+Remnant = 0.000466991721488
+
+Sim #1661
+BH = 8.81, NS = 1.38
+SNR = 27.922
+Remnant = 0.0
+
+Sim #1681
+BH = 9.42, NS = 1.39
+SNR = 17.427
+Remnant = 0.0
+
+Sim #1714
+BH = 8.16, NS = 1.45
+SNR = 12.774
+Remnant = 0.0
+
+Sim #1748
+BH = 7.55, NS = 1.34
+SNR = 14.61
+Remnant = 0.0
+
+Sim #1752
+BH = 8.95, NS = 1.49
+SNR = 15.616
+Remnant = 0.0
+
+Sim #1759
+BH = 7.09, NS = 1.41
+SNR = 13.213
+Remnant = 0.0
+
+Sim #1776
+BH = 6.13, NS = 1.24
+SNR = 12.473
+Remnant = 9.65634096388e-05
+
+Sim #1823
+BH = 9.54, NS = 1.56
+SNR = 13.368
+Remnant = 0.0
+
+Sim #1856
+BH = 9.51, NS = 1.44
+SNR = 13.282
+Remnant = 0.0
+
+Sim #1868
+BH = 8.17, NS = 1.43
+SNR = 21.537
+Remnant = 0.0
+
+Sim #1875
+BH = 7.67, NS = 1.46
+SNR = 19.245
+Remnant = 0.0
+
+Sim #1878
+BH = 7.97, NS = 1.53
+SNR = 13.758
+Remnant = 0.0
+
+Sim #1900
+BH = 8.78, NS = 1.25
+SNR = 14.999
+Remnant = 0.0
+
+Sim #1903
+BH = 8.42, NS = 1.67
+SNR = 16.151
+Remnant = 0.0
+
+Sim #1907
+BH = 8.12, NS = 1.39
+SNR = 13.409
+Remnant = 0.00283956514495
+
+Sim #1924
+BH = 7.81, NS = 1.43
+SNR = 21.147
+Remnant = 0.0
+
+Sim #1933
+BH = 6.58, NS = 1.51
+SNR = 20.152
+Remnant = 0.0
+
+Sim #1950
+BH = 9.68, NS = 1.39
+SNR = 12.776
+Remnant = 0.0
+
+Sim #1982
+BH = 7.24, NS = 1.29
+SNR = 12.619
+Remnant = 0.0241201449711
+
+Sim #2010
+BH = 6.93, NS = 1.43
+SNR = 12.364
+Remnant = 0.00298279131486
+
+Sim #2019
+BH = 7.94, NS = 1.67
+SNR = 17.937
+Remnant = 0.0
+
+Sim #2024
+BH = 8.04, NS = 1.26
+SNR = 24.897
+Remnant = 0.0
+
+Sim #2042
+BH = 7.57, NS = 1.42
+SNR = 31.482
+Remnant = 0.0
+
+Sim #222
+BH = 8.60, NS = 1.27
+SNR = 16.547
+Remnant = 0.0
+
+Sim #237
+BH = 8.48, NS = 1.49
+SNR = 13.234
+Remnant = 0.0
+
+Sim #247
+BH = 9.33, NS = 1.66
+SNR = 16.444
+Remnant = 0.0
+
+Sim #2054
+BH = 8.57, NS = 1.23
+SNR = 15.374
+Remnant = 0.0
+
+Sim #2058
+BH = 8.42, NS = 1.48
+SNR = 19.648
+Remnant = 0.0
+
+Sim #2062
+BH = 7.89, NS = 1.63
+SNR = 12.341
+Remnant = 0.0
+
+Sim #2091
+BH = 9.07, NS = 1.22
+SNR = 12.862
+Remnant = 0.0
+
+Sim #2093
+BH = 8.00, NS = 1.49
+SNR = 13.312
+Remnant = 0.0
+
+Sim #2103
+BH = 8.76, NS = 1.61
+SNR = 18.398
+Remnant = 0.0
+
+Sim #2109
+BH = 8.13, NS = 1.33
+SNR = 16.295
+Remnant = 0.0
+
+Sim #2113
+BH = 8.94, NS = 1.04
+SNR = 14.226
+Remnant = 0.0
+
+Sim #2139
+BH = 7.39, NS = 1.48
+SNR = 14.568
+Remnant = 0.0
+
+Sim #2169
+BH = 7.75, NS = 1.30
+SNR = 12.059
+Remnant = 0.0
+
+Sim #2183
+BH = 7.50, NS = 1.65
+SNR = 15.801
+Remnant = 0.0
+
+Sim #2186
+BH = 7.83, NS = 1.43
+SNR = 13.528
+Remnant = 0.0
+
+Sim #2233
+BH = 9.48, NS = 1.40
+SNR = 12.346
+Remnant = 0.0
+
+Sim #2241
+BH = 7.71, NS = 1.15
+SNR = 12.337
+Remnant = 0.0206709428741
+
+Sim #2245
+BH = 6.53, NS = 1.37
+SNR = 13.108
+Remnant = 0.0
+
+Sim #2277
+BH = 8.77, NS = 1.19
+SNR = 13.456
+Remnant = 0.0
+
+Sim #2283
+BH = 9.15, NS = 1.41
+SNR = 25.15
+Remnant = 0.0
+
+Sim #2318
+BH = 7.45, NS = 1.15
+SNR = 22.618
+Remnant = 0.0
+
+Sim #2334
+BH = 9.47, NS = 1.29
+SNR = 12.006
+Remnant = 0.0
+
+Sim #2347
+BH = 8.78, NS = 1.44
+SNR = 13.803
+Remnant = 0.0
+
+Sim #2352
+BH = 8.05, NS = 1.54
+SNR = 28.641
+Remnant = 0.0
+
+Sim #2366
+BH = 8.59, NS = 1.51
+SNR = 21.105
+Remnant = 0.0
+
+Sim #2368
+BH = 7.38, NS = 1.33
+SNR = 15.201
+Remnant = 0.00144874449151
+
+Sim #2377
+BH = 8.94, NS = 1.28
+SNR = 16.519
+Remnant = 0.0
+
+Sim #2407
+BH = 8.79, NS = 1.32
+SNR = 12.922
+Remnant = 0.0
+
+Sim #2418
+BH = 9.39, NS = 1.20
+SNR = 16.035
+Remnant = 0.0
+
+Sim #2420
+BH = 8.04, NS = 1.32
+SNR = 16.165
+Remnant = 0.00102157004248
+
+Sim #2424
+BH = 7.84, NS = 1.25
+SNR = 27.21
+Remnant = 0.0
+
+Sim #2447
+BH = 6.39, NS = 1.22
+SNR = 12.438
+Remnant = 1.05104352891e-06
+
+Sim #2452
+BH = 6.94, NS = 1.08
+SNR = 13.18
+Remnant = 0.0621373632342
+
+Sim #2483
+BH = 8.72, NS = 1.25
+SNR = 15.883
+Remnant = 0.0
+
+Sim #2489
+BH = 8.78, NS = 1.21
+SNR = 13.331
+Remnant = 0.0
+
+Sim #2493
+BH = 8.28, NS = 1.17
+SNR = 13.487
+Remnant = 0.0
+
+Sim #2546
+BH = 6.61, NS = 1.69
+SNR = 13.18
+Remnant = 0.0
+
+Sim #250
+BH = 9.24, NS = 1.16
+SNR = 15.07
+Remnant = 0.0
+
+Sim #251
+BH = 8.41, NS = 1.44
+SNR = 12.106
+Remnant = 0.0
+
+Sim #260
+BH = 7.39, NS = 1.21
+SNR = 13.946
+Remnant = 0.0
+
+Sim #269
+BH = 9.14, NS = 1.31
+
+SNR = 14.63
+Remnant = 0.0
+
+Sim #285
+BH = 8.52, NS = 1.20
+SNR = 12.062
+Remnant = 0.0
+
+Sim #295
+BH = 9.26, NS = 1.36
+SNR = 18.792
+Remnant = 0.0
+
+Sim #2552
+BH = 9.89, NS = 1.41
+SNR = 13.654
+Remnant = 0.0
+
+Sim #2559
+BH = 7.43, NS = 1.36
+SNR = 13.533
+Remnant = 0.0
+
+Sim #2568
+BH = 6.95, NS = 1.41
+SNR = 31.586
+Remnant = 0.0
+
+Sim #2573
+BH = 8.90, NS = 1.40
+SNR = 33.836
+Remnant = 0.0
+
+Sim #2574
+BH = 6.91, NS = 1.46
+SNR = 12.113
+Remnant = 0.00605024782686
+
+Sim #2594
+BH = 9.86, NS = 1.36
+SNR = 25.211
+Remnant = 0.0
+
+Sim #2604
+BH = 8.45, NS = 1.47
+SNR = 14.702
+Remnant = 0.0
+
+Sim #2621
+BH = 8.61, NS = 1.49
+SNR = 72.496
+Remnant = 0.0
+
+Sim #2637
+BH = 7.49, NS = 1.26
+SNR = 43.474
+Remnant = 0.0
+
+Sim #2639
+BH = 7.99, NS = 1.18
+SNR = 23.14
+Remnant = 0.0130461942473
+
+Sim #2652
+BH = 9.43, NS = 1.10
+SNR = 13.066
+Remnant = 0.0
+
+Sim #2655
+BH = 7.21, NS = 1.57
+SNR = 13.866
+Remnant = 0.0
+
+Sim #2657
+BH = 8.41, NS = 1.51
+SNR = 16.804
+Remnant = 0.0
+
+Sim #2674
+BH = 8.02, NS = 1.10
+SNR = 13.748
+Remnant = 0.038953159347
+
+Sim #2680
+BH = 6.79, NS = 1.29
+SNR = 24.087
+Remnant = 0.00445318924022
+
+Sim #2704
+BH = 7.40, NS = 1.27
+SNR = 13.085
+Remnant = 0.0
+
+Sim #2705
+BH = 7.60, NS = 1.43
+SNR = 13.896
+Remnant = 0.00340540408771
+
+Sim #2715
+BH = 8.65, NS = 1.34
+SNR = 13.472
+Remnant = 0.0
+
+Sim #2716
+BH = 8.27, NS = 1.39
+SNR = 20.12
+Remnant = 0.0
+
+Sim #2754
+BH = 8.79, NS = 1.41
+SNR = 14.61
+Remnant = 0.0
+
+Sim #2757
+BH = 7.50, NS = 1.41
+SNR = 14.998
+Remnant = 0.0
+
+Sim #2802
+BH = 8.58, NS = 1.34
+SNR = 15.798
+Remnant = 0.0
+
+Sim #2810
+BH = 9.34, NS = 1.41
+SNR = 14.209
+Remnant = 0.0
+
+Sim #2812
+BH = 6.55, NS = 1.47
+SNR = 13.411
+Remnant = 0.0
+
+Sim #2843
+BH = 8.94, NS = 1.21
+SNR = 16.874
+Remnant = 0.0
+
+Sim #2845
+BH = 9.08, NS = 1.43
+SNR = 12.768
+Remnant = 0.0
+
+Sim #2867
+BH = 7.20, NS = 1.09
+SNR = 14.178
+Remnant = 0.00349308974588
+
+Sim #2876
+BH = 7.56, NS = 1.19
+SNR = 18.058
+Remnant = 0.00385954462564
+
+Sim #2906
+BH = 7.78, NS = 1.32
+SNR = 22.845
+Remnant = 0.0
+
+Sim #2911
+BH = 6.50, NS = 1.15
+SNR = 12.457
+Remnant = 0.0203800753158
+
+Sim #2922
+BH = 8.58, NS = 1.23
+SNR = 14.083
+Remnant = 0.0
+
+Sim #2923
+BH = 7.05, NS = 1.25
+SNR = 21.024
+Remnant = 0.0
+
+Sim #2926
+BH = 7.84, NS = 1.31
+SNR = 13.273
+Remnant = 0.0
+
+Sim #2929
+BH = 7.71, NS = 1.17
+SNR = 15.83
+Remnant = 0.0
+
+Sim #2931
+BH = 7.68, NS = 1.40
+SNR = 15.362
+Remnant = 0.0
+
+Sim #2955
+BH = 7.88, NS = 1.35
+SNR = 12.902
+Remnant = 0.00525169974807
+
+Sim #2973
+BH = 7.78, NS = 1.49
+SNR = 16.324
+Remnant = 0.0
+
+Sim #2988
+BH = 7.17, NS = 1.13
+SNR = 16.621
+Remnant = 0.00383935879915
+
+Sim #3047
+BH = 7.21, NS = 1.52
+SNR = 12.223
+Remnant = 0.0
+
+Sim #304
+BH = 8.45, NS = 1.33
+SNR = 13.181
+Remnant = 0.0
+
+Sim #310
+BH = 7.94, NS = 1.39
+SNR = 26.172
+Remnant = 0.0
+
+Sim #329
+BH = 9.00, NS = 1.39
+SNR = 16.805
+Remnant = 0.0
+
+Sim #337
+BH = 7.80, NS = 1.44
+SNR = 22.815
+Remnant = 0.0
+
+Sim #342
+BH = 8.57, NS = 1.34
+SNR = 21.387
+Remnant = 0.0
+
+Sim #3057
+BH = 7.39, NS = 1.35
+SNR = 12.424
+Remnant = 0.0
+
+Sim #3063
+BH = 7.56, NS = 1.35
+SNR = 32.764
+Remnant = 0.0
+
+Sim #3090
+BH = 8.88, NS = 1.41
+SNR = 13.548
+Remnant = 0.0
+
+Sim #3103
+BH = 8.31, NS = 1.52
+SNR = 15.869
+Remnant = 0.0
+
+Sim #3110
+BH = 7.88, NS = 1.37
+SNR = 24.418
+Remnant = 0.0
+
+Sim #3145
+BH = 6.26, NS = 1.35
+SNR = 19.267
+Remnant = 0.00289937249179
+
+Sim #3172
+BH = 7.32, NS = 1.44
+SNR = 19.236
+Remnant = 0.0
+
+Sim #3203
+BH = 10.49, NS = 1.58
+SNR = 12.416
+Remnant = 0.0
+
+Sim #3208
+BH = 6.26, NS = 1.32
+SNR = 14.167
+Remnant = 0.0
+
+Sim #3246
+BH = 8.02, NS = 1.11
+SNR = 15.47
+Remnant = 0.0273854333155
+
+Sim #3263
+BH = 8.95, NS = 1.73
+SNR = 16.271
+Remnant = 0.0
+
+Sim #3290
+BH = 8.05, NS = 1.55
+SNR = 14.358
+Remnant = 0.0
+
+Sim #3294
+BH = 6.53, NS = 1.04
+SNR = 13.118
+Remnant = 0.0197639790992
+
+Sim #3300
+BH = 9.40, NS = 1.12
+SNR = 19.267
+Remnant = 0.0
+
+Sim #3305
+BH = 8.84, NS = 1.44
+SNR = 13.879
+Remnant = 0.0
+
+Sim #3316
+BH = 8.18, NS = 1.40
+SNR = 44.284
+Remnant = 0.0
+
+Sim #3320
+BH = 8.53, NS = 1.35
+SNR = 12.453
+Remnant = 0.0
+
+Sim #3325
+BH = 7.87, NS = 1.43
+SNR = 26.367
+Remnant = 0.0
+
+Sim #3329
+BH = 8.22, NS = 1.75
+SNR = 12.787
+Remnant = 0.0
+
+Sim #3351
+BH = 7.67, NS = 1.52
+SNR = 13.027
+Remnant = 0.0
+
+Sim #3371
+BH = 6.93, NS = 1.48
+SNR = 12.444
+Remnant = 0.0
+
+Sim #3393
+BH = 7.64, NS = 1.52
+SNR = 14.052
+Remnant = 0.0
+
+Sim #3395
+BH = 7.45, NS = 1.57
+SNR = 12.807
+Remnant = 0.0
+
+Sim #3416
+BH = 8.97, NS = 1.54
+SNR = 15.552
+Remnant = 0.0
+
+Sim #3428
+BH = 8.52, NS = 1.57
+SNR = 12.046
+Remnant = 0.0
+
+Sim #3443
+BH = 7.19, NS = 1.44
+SNR = 14.166
+Remnant = 0.0
+
+Sim #3472
+BH = 8.33, NS = 1.37
+SNR = 20.471
+Remnant = 0.0
+
+Sim #3509
+BH = 9.56, NS = 1.38
+SNR = 16.344
+Remnant = 0.0
+
+Sim #3521
+BH = 8.19, NS = 1.16
+SNR = 14.241
+Remnant = 0.000277495272283
+
+Sim #3533
+BH = 10.13, NS = 1.31
+SNR = 20.107
+Remnant = 0.0
+
+Sim #3539
+BH = 5.73, NS = 1.27
+SNR = 19.395
+Remnant = 0.0262133980293
+
+Sim #3546
+BH = 8.57, NS = 1.37
+SNR = 24.217
+Remnant = 0.0
+
+Sim #362
+BH = 6.69, NS = 1.52
+SNR = 14.409
+Remnant = 0.000162606224724
+
+Sim #3572
+BH = 8.57, NS = 1.45
+SNR = 14.973
+Remnant = 0.0
+
+Sim #3578
+BH = 6.17, NS = 1.22
+SNR = 16.122
+Remnant = 0.0439164271307
+
+Sim #3606
+BH = 7.30, NS = 1.17
+SNR = 12.195
+Remnant = 0.0
+
+Sim #3612
+BH = 7.36, NS = 1.04
+SNR = 15.381
+Remnant = 0.00538363976489
+
+Sim #3628
+BH = 6.96, NS = 1.46
+SNR = 20.72
+Remnant = 0.0
+
+Sim #3691
+BH = 9.42, NS = 1.59
+SNR = 15.226
+Remnant = 0.0
+
+Sim #3698
+BH = 8.36, NS = 1.36
+SNR = 12.246
+Remnant = 0.0
+
+Sim #3714
+BH = 8.48, NS = 1.19
+SNR = 13.075
+Remnant = 0.0
+
+Sim #3735
+BH = 7.12, NS = 1.25
+SNR = 13.192
+Remnant = 0.0
+
+Sim #3752
+BH = 8.36, NS = 1.41
+SNR = 23.022
+Remnant = 0.0
+
+Sim #3757
+BH = 8.30, NS = 1.31
+SNR = 13.235
+Remnant = 0.00110214199105
+
+Sim #3785
+BH = 9.07, NS = 1.11
+SNR = 16.012
+Remnant = 0.0
+
+Sim #3806
+BH = 7.75, NS = 1.31
+SNR = 18.112
+Remnant = 0.0
+
+Sim #3811
+BH = 7.22, NS = 1.22
+SNR = 12.932
+Remnant = 0.0
+
+Sim #3813
+BH = 7.85, NS = 1.37
+SNR = 15.759
+Remnant = 0.0
+
+Sim #3837
+BH = 7.36, NS = 1.44
+SNR = 13.037
+Remnant = 0.0
+
+Sim #3843
+BH = 9.63, NS = 1.20
+SNR = 16.019
+Remnant = 0.0
+
+Sim #3846
+BH = 8.78, NS = 1.35
+SNR = 13.731
+Remnant = 0.0
+
+Sim #3849
+BH = 9.01, NS = 1.64
+SNR = 13.197
+Remnant = 0.0
+
+Sim #3869
+BH = 8.59, NS = 1.22
+SNR = 13.518
+Remnant = 0.0
+
+Sim #3885
+BH = 7.04, NS = 1.26
+SNR = 22.884
+Remnant = 0.0
+
+Sim #3896
+BH = 8.32, NS = 1.37
+SNR = 16.641
+Remnant = 0.0
+
+Sim #3902
+BH = 6.99, NS = 1.16
+SNR = 12.125
+Remnant = 0.0
+
+Sim #3905
+BH = 7.35, NS = 1.45
+SNR = 28.355
+Remnant = 0.0
+
+Sim #3910
+BH = 6.54, NS = 1.31
+SNR = 13.894
+Remnant = 0.0
+
+Sim #3949
+BH = 6.24, NS = 1.09
+SNR = 14.104
+Remnant = 0.0159032380647
+
+Sim #3957
+BH = 7.41, NS = 1.76
+SNR = 12.017
+Remnant = 0.0
+
+Sim #3958
+BH = 8.56, NS = 1.45
+SNR = 12.315
+Remnant = 0.0
+
+Sim #3962
+BH = 9.81, NS = 1.26
+SNR = 20.52
+Remnant = 0.0
+
+Sim #3991
+BH = 6.09, NS = 1.44
+SNR = 43.784
+Remnant = 1.34321423857e-05
+
+Sim #3993
+BH = 7.67, NS = 1.51
+SNR = 14.232
+Remnant = 0.000547092179523
+
+Sim #4004
+BH = 9.53, NS = 1.52
+SNR = 22.716
+Remnant = 0.0
+
+Sim #4006
+BH = 8.45, NS = 1.45
+SNR = 12.682
+Remnant = 0.0
+
+Sim #4007
+BH = 8.88, NS = 1.43
+SNR = 12.127
+Remnant = 0.0
+
+Sim #4010
+BH = 8.15, NS = 1.33
+SNR = 13.411
+Remnant = 0.0
+
+Sim #4025
+BH = 7.67, NS = 1.36
+SNR = 20.123
+Remnant = 0.0
+
+Sim #4027
+BH = 8.28, NS = 1.30
+SNR = 13.101
+Remnant = 0.0
+
+Sim #4028
+BH = 7.02, NS = 1.54
+SNR = 23.102
+Remnant = 0.0
+
+Sim #4044
+BH = 6.62, NS = 1.33
+SNR = 12.87
+Remnant = 0.00467258616656
+
+Sim #4049
+BH = 6.93, NS = 1.55
+SNR = 16.066
+Remnant = 0.0
+
+Sim #412
+BH = 8.45, NS = 1.14
+SNR = 14.979
+Remnant = 0.0
+
+Sim #419
+BH = 8.85, NS = 1.48
+SNR = 14.056
+Remnant = 0.0
+
+Sim #425
+BH = 7.88, NS = 1.19
+SNR = 12.88
+Remnant = 4.29277958261e-05
+
+Sim #430
+BH = 7.39, NS = 1.37
+SNR = 52.679
+Remnant = 0.0129423908466
+
+Sim #445
+BH = 8.50, NS = 1.40
+SNR = 16.687
+Remnant = 0.0
+
+Sim #4115
+BH = 7.23, NS = 1.22
+SNR = 13.591
+Remnant = 0.0
+
+Sim #4134
+BH = 8.45, NS = 1.31
+SNR = 19.046
+Remnant = 0.0
+
+Sim #4135
+BH = 9.68, NS = 1.66
+SNR = 12.838
+Remnant = 0.0
+
+Sim #4160
+BH = 9.50, NS = 1.27
+SNR = 14.33
+Remnant = 0.0
+
+Sim #4175
+BH = 7.41, NS = 1.29
+SNR = 13.561
+Remnant = 0.0
+
+Sim #4181
+BH = 9.42, NS = 1.31
+SNR = 26.857
+Remnant = 0.0
+
+Sim #4192
+BH = 8.24, NS = 1.62
+SNR = 14.841
+Remnant = 0.0
+
+Sim #4199
+BH = 7.91, NS = 1.48
+SNR = 15.296
+Remnant = 0.0
+
+Sim #4209
+BH = 8.60, NS = 1.19
+SNR = 20.995
+Remnant = 0.0
+
+Sim #4218
+BH = 7.15, NS = 1.22
+
+SNR = 12.002
+Remnant = 0.0
+
+Sim #4239
+BH = 8.29, NS = 1.23
+SNR = 16.775
+Remnant = 0.0
+
+Sim #4255
+BH = 7.77, NS = 1.29
+SNR = 20.109
+Remnant = 0.0
+
+Sim #4258
+BH = 7.85, NS = 1.23
+SNR = 21.285
+Remnant = 0.0
+
+Sim #4262
+BH = 7.54, NS = 1.31
+SNR = 15.635
+Remnant = 0.0
+
+Sim #4267
+BH = 7.92, NS = 1.49
+SNR = 12.295
+Remnant = 0.0
+
+Sim #4270
+BH = 7.69, NS = 1.20
+SNR = 12.465
+Remnant = 0.00328251994908
+
+Sim #4272
+BH = 7.72, NS = 1.33
+SNR = 18.517
+Remnant = 0.0
+
+Sim #4284
+BH = 8.45, NS = 1.49
+SNR = 14.001
+Remnant = 0.0
+
+Sim #4288
+BH = 6.03, NS = 1.28
+SNR = 17.221
+Remnant = 0.0
+
+Sim #4298
+BH = 8.89, NS = 1.61
+SNR = 12.902
+Remnant = 0.0
+
+Sim #4310
+BH = 8.62, NS = 1.38
+SNR = 12.516
+Remnant = 0.0
+
+Sim #4345
+BH = 8.32, NS = 1.40
+SNR = 13.043
+Remnant = 0.0044997075259
+
+Sim #4349
+BH = 8.63, NS = 1.25
+SNR = 13.94
+Remnant = 0.0
+
+Sim #4372
+BH = 7.72, NS = 1.36
+SNR = 12.178
+Remnant = 0.0
+
+Sim #4380
+BH = 6.52, NS = 1.25
+SNR = 12.323
+Remnant = 0.000665487749268
+
+Sim #4381
+BH = 6.33, NS = 1.20
+SNR = 12.439
+Remnant = 0.00189849984402
+
+Sim #451
+BH = 7.81, NS = 1.35
+SNR = 12.909
+Remnant = 0.0
+
+Sim #467
+BH = 9.97, NS = 1.49
+SNR = 13.446
+Remnant = 0.0
+
+Sim #472
+BH = 9.52, NS = 1.17
+SNR = 13.859
+Remnant = 0.0
+
+Sim #504
+BH = 7.69, NS = 1.23
+SNR = 12.057
+Remnant = 0.0
+
+Sim #539
+BH = 9.27, NS = 1.54
+SNR = 13.007
+Remnant = 0.0
+
+Sim #548
+BH = 9.67, NS = 1.18
+SNR = 41.289
+Remnant = 0.0
+
+Sim #62
+BH = 9.27, NS = 1.24
+SNR = 13.79
+Remnant = 0.0
+
+Sim #66
+BH = 8.49, NS = 1.24
+SNR = 14.962
+Remnant = 0.0
+
+Sim #88
+BH = 9.45, NS = 1.19
+SNR = 12.439
+Remnant = 0.0
+
+Sim #555
+BH = 8.58, NS = 1.38
+SNR = 14.829
+Remnant = 0.0
+
+Sim #564
+BH = 8.79, NS = 1.22
+SNR = 35.885
+Remnant = 0.0
+
+Sim #576
+BH = 7.70, NS = 1.20
+SNR = 13.473
+Remnant = 0.0
+
+Sim #579
+BH = 7.24, NS = 1.49
+SNR = 24.507
+Remnant = 0.0
+
+Sim #586
+BH = 7.22, NS = 1.41
+SNR = 16.7
+Remnant = 0.0
+
+Sim #603
+BH = 10.65, NS = 1.48
+SNR = 12.125
+Remnant = 0.0
+
+Sim #622
+BH = 7.36, NS = 1.20
+SNR = 24.108
+Remnant = 0.0
+
+Sim #623
+BH = 8.57, NS = 1.32
+SNR = 12.17
+Remnant = 0.0
+
+Sim #678
+BH = 7.64, NS = 1.50
+SNR = 16.013
+Remnant = 0.0
+
+Sim #718
+BH = 7.79, NS = 1.31
+SNR = 12.771
+Remnant = 0.0
+
+Sim #719
+BH = 9.09, NS = 1.63
+SNR = 17.128
+Remnant = 0.0
+
+Sim #739
+BH = 8.30, NS = 1.41
+SNR = 13.699
+Remnant = 0.0
+
+Sim #744
+BH = 7.12, NS = 1.53
+SNR = 15.367
+Remnant = 0.0
+
+Sim #746
+BH = 8.85, NS = 1.44
+SNR = 12.491
+Remnant = 0.0
+
+Sim #779
+BH = 6.14, NS = 1.35
+SNR = 21.911
+Remnant = 0.0
+
+Sim #780
+BH = 9.52, NS = 1.17
+SNR = 12.019
+Remnant = 0.0
+
+Sim #790
+BH = 8.40, NS = 1.16
+SNR = 21.614
+Remnant = 0.0
+
+Sim #791
+BH = 8.78, NS = 1.38
+SNR = 13.172
+Remnant = 0.0
+
+Sim #800
+BH = 7.36, NS = 1.39
+SNR = 12.582
+Remnant = 0.0280365970823
+
+Sim #806
+BH = 8.21, NS = 1.13
+SNR = 28.477
+Remnant = 0.0
+
+Sim #810
+BH = 7.68, NS = 1.36
+SNR = 13.855
+Remnant = 0.0
+
+Sim #816
+BH = 7.55, NS = 1.31
+SNR = 21.271
+Remnant = 0.0
+
+Sim #827
+BH = 7.72, NS = 1.04
+SNR = 13.315
+Remnant = 0.000726831805019
+
+Sim #828
+BH = 8.79, NS = 1.27
+SNR = 17.842
+Remnant = 0.0
+
+Sim #830
+BH = 7.86, NS = 1.35
+SNR = 14.604
+Remnant = 0.0
+
+Sim #836
+BH = 6.67, NS = 1.53
+SNR = 12.481
+Remnant = 0.0
+
+Sim #848
+BH = 6.34, NS = 1.41
+SNR = 21.308
+Remnant = 0.0
+
+Sim #854
+BH = 9.00, NS = 1.32
+SNR = 13.62
+Remnant = 0.00198626449872
+
+Sim #866
+BH = 7.46, NS = 1.48
+SNR = 12.643
+Remnant = 0.0
+
+Sim #910
+BH = 7.65, NS = 1.03
+SNR = 15.677
+Remnant = 0.00219426966342
+
+Sim #996
+BH = 7.82, NS = 1.62
+SNR = 12.311
+Remnant = 0.0
+
