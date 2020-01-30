@@ -101,15 +101,19 @@ truths = copy.deepcopy(result.injection_parameters)
 # set up injected waveform
 injected_pars = ['mass_1', 'mass_2', 'luminosity_distance', \
                  'theta_jn', 'psi', 'phase', 'geocent_time', \
-                 'ra', 'dec', 'lambda_1', 'lambda_2', \
-                 'chi_1', 'chi_2']
+                 'ra', 'dec', 'chi_1', 'chi_2']
+if not no_td:
+    injected_pars += ['lambda_1', 'lambda_2']
 injection_parameters = {key: truths[key] for key in injected_pars}
 t0 = truths['geocent_time']
 data_start_time = truths['geocent_time'] + 2 - duration
 
 # instantiate injected waveform generator object
-#waveform_arguments = dict(waveform_approximant='IMRPhenomPv2', \
-waveform_arguments = dict(waveform_approximant='IMRPhenomPv2_NRTidal', \
+if no_td:
+    wf_approx = 'IMRPhenomPv2'
+else:
+    wf_approx = 'IMRPhenomPv2_NRTidal'
+waveform_arguments = dict(waveform_approximant=wf_approx, \
                           reference_frequency=reference_frequency, \
                           minimum_frequency=minimum_frequency)
 waveform_generator = bilby.gw.WaveformGenerator(
@@ -178,13 +182,15 @@ if zero_spins:
 
     plot_params = {key: result.injection_parameters[key] for key in \
                    result.search_parameter_keys}
-    plot_params.pop('time_jitter')
-    plot_params['luminosity_distance'] = \
-        result.injection_parameters['luminosity_distance']
+    if no_td:
+        plot_params.pop('time_jitter')
+        plot_params['luminosity_distance'] = \
+            result.injection_parameters['luminosity_distance']
     fig = result.plot_corner(parameters=plot_params, save=False)
-    n = len(plot_params.keys())
-    fig.axes[n ** 2 - n].set_ylabel(r'$d_L\,{\rm [Mpc]}$')
-    fig.axes[n ** 2 - 1].set_xlabel(r'$d_L\,{\rm [Mpc]}$')
+    if no_td:
+        n = len(plot_params.keys())
+        fig.axes[n ** 2 - n].set_ylabel(r'$d_L\,{\rm [Mpc]}$')
+        fig.axes[n ** 2 - 1].set_xlabel(r'$d_L\,{\rm [Mpc]}$')
     fig.savefig(osp.join(outdir, label + '_final_corner.pdf'), \
                 bbox_inches='tight')
 
