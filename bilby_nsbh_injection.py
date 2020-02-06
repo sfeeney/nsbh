@@ -21,10 +21,10 @@ sampling_frequency = 2048.
 minimum_frequency = 40.0 # 20.0
 reference_frequency = 50.0
 sampler = 'dynesty' # 'emcee'
-zero_spins = True
-minimal_run = True
-pre_marge = False
-no_td = True
+zero_spins = False
+minimal_run = False
+pre_marge = True
+no_td = False
 
 # Specify the output directory and the name of the simulation.
 outdir = 'outdir'
@@ -43,7 +43,7 @@ if no_td:
 bilby.core.utils.setup_logger(outdir=outdir, label=label)
 
 # Set up a random seed for result reproducibility.  This is optional!
-#np.random.seed(88170235)
+np.random.seed(22122016)
 
 # We are going to inject a binary neutron star waveform.  We first establish a
 # dictionary of parameters that includes all of the different waveform
