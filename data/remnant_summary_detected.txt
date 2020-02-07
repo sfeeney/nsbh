@@ -675,7 +675,6 @@ Remnant = 0.0
 
 Sim #269
 BH = 9.14, NS = 1.31
-
 SNR = 14.63
 Remnant = 0.0
 
@@ -1346,7 +1345,6 @@ Remnant = 0.0
 
 Sim #4218
 BH = 7.15, NS = 1.22
-
 SNR = 12.002
 Remnant = 0.0
 
