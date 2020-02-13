@@ -195,7 +195,7 @@ for job in job_list:
     # Specify the output directory and the name of the simulation.
     outdir = 'outdir'
     label_str = 'nsbh_inj_{:d}_d_{:04.1f}_mf_{:4.1f}_rf_{:4.1f}'
-    label = label_str.format(inj_id, duration, minimum_frequency, \
+    label = label_str.format(target_ids[job], duration, minimum_frequency, \
                              reference_frequency)
     if zero_spins:
         label += '_zero_spins'
