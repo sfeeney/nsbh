@@ -74,6 +74,18 @@ minimum_frequency = 40.0 # 20.0
 reference_frequency = 14.0 # 50.0
 zero_spins = False
 remnants_only = True
+tight_loc = True
+constrain = True
+
+# settings for tight localisation: known angular position, distance 
+# constrained to be approximately Gaussian by redshift, peculiar 
+# velocity and Hubble Constant measurements
+c = 2.998e5
+sig_z_obs = 0.001
+sig_v_pec_obs = 200.0
+sig_v_rec_obs = np.sqrt((c * sig_z_obs) ** 2 + sig_v_pec_obs ** 2)
+h_0_obs = 67.4
+sig_h_0_obs = 0.50
 
 # set up identical within-chain MPI processes
 if use_mpi:
@@ -84,6 +96,10 @@ else:
     n_procs = 1
     rank = 0
 
+# Set up a random seed for result reproducibility.  This is optional!
+if constrain:
+    np.random.seed(141023 + rank)
+
 # read list of all targets and assign
 targets = np.genfromtxt('data/remnant_sorted_detected.txt', delimiter=' ')
 target_ids = targets[:, 0].astype(int)
@@ -92,18 +108,19 @@ if remnants_only:
 n_inj = len(target_ids)
 job_list = allocate_jobs(n_inj, n_procs, rank)
 
+# read in injection parameters from file
+raw_pars = np.genfromtxt('data/NSBH_samples_precessing_DD2_detected.dat', \
+                         dtype=None, names=True, delimiter=',', \
+                         encoding=None)
+
 # loop over assignments
 for job in job_list:
 
-    # which injection?
-    # read in injection parameters from Andrew
+    # find next injection
     # entries are simulation_id, mass1, mass2, spin1x, spin1y, spin1z, 
     # spin2x, spin2y, spin2z, distance, inclination, coa_phase, 
     # polarization, longitude, latitude, geocent_end_time, geocent_end_time_ns
     # can access these names using raw_pars.dtype.names
-    raw_pars = np.genfromtxt('data/NSBH_samples_precessing_DD2_detected.dat', \
-                             dtype=None, names=True, delimiter=',', \
-                             encoding=None)
     search_str = 'sim_inspiral:simulation_id:{:d}'.format(target_ids[job])
     inj_id = np.argwhere(raw_pars['simulation_id']==search_str)[0, 0]
     sel_pars = raw_pars[inj_id]
@@ -135,6 +152,16 @@ for job in job_list:
         spin_2x = 0.0
         spin_2y = 0.0
         spin_2z = 0.0
+
+    # if constraining distance from cosmology and redshift, determine
+    # the distance uncertainty and draw a noisy distance estimate. this 
+    # estimate, along with the distance uncertainty, defines the prior 
+    # on distance we will use
+    if tight_loc:
+        sig_d_obs = np.sqrt((sig_h_0_obs / h_0_obs) ** 2 + \
+                            (sig_v_rec_obs / h_0_obs / distance) ** 2) * \
+                    distance
+        d_obs = distance + np.random.randn() * sig_d_obs
 
     # convert longitude and latitude (in radians) to RA, DEC (in radians)
     t = at.Time(time, format='gps')
@@ -172,10 +199,9 @@ for job in job_list:
                              reference_frequency)
     if zero_spins:
         label += '_zero_spins'
+    if tight_loc:
+        label += '_tight_loc'
     bilby.core.utils.setup_logger(outdir=outdir, label=label)
-
-    # Set up a random seed for result reproducibility.  This is optional!
-    np.random.seed(141023)
 
     # We are going to inject a binary neutron star waveform.  We first establish a
     # dictionary of parameters that includes all of the different waveform
@@ -244,11 +270,18 @@ for job in job_list:
         priors['a_1'] = \
             bilby.core.prior.Uniform(name='a_1', minimum=0, maximum=0.8, \
                                      boundary='reflective')
+    if tight_loc:
+        to_fix += ['ra', 'dec']
+        priors.pop('luminosity_distance')
+        priors['luminosity_distance'] = \
+            bilby.prior.Gaussian(d_obs, sig_d_obs, \
+                                 name='luminosity_distance', unit='Mpc', \
+                                 latex_label='$D_L$')
     for key in to_fix:
         priors[key] = injection_parameters[key]
 
     # Initialise the likelihood by passing in the interferometer data (ifos) and
-    # the waveoform generator, as well the priors.
+    # the waveform generator, as well as the priors.
     # The explicit time, distance, and phase marginalizations are turned on to
     # improve convergence, and the parameters are recovered by the conversion
     # function.
