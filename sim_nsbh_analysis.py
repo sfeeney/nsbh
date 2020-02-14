@@ -13,6 +13,7 @@ import lalsimulation as lalsim
 import astropy.time as at
 import astropy.coordinates as ac
 import astropy.units as au
+import sys
 
 def dd2_lambda_from_mass(m):
     return 1.60491e6 - 23020.6 * m**-5 + 194720. * m**-4 - 658596. * m**-3 \
@@ -67,7 +68,7 @@ def allocate_all_jobs(n_jobs, n_procs=1):
 # 8 - fix angular positions?
 
 # settings
-use_mpi = True
+use_mpi = False
 duration = 8.0 # 32.0
 sampling_frequency = 2048.
 minimum_frequency = 40.0 # 20.0
@@ -92,13 +93,21 @@ if use_mpi:
     import mpi4py.MPI as mpi
     n_procs = mpi.COMM_WORLD.Get_size()
     rank = mpi.COMM_WORLD.Get_rank()
+elif len(sys.argv) > 1:
+    if len(sys.argv) == 3:
+        n_procs = int(sys.argv[1])
+        rank = int(sys.argv[2])
+        if rank > n_procs or rank < 0:
+            exit('ERROR: 1 <= rank <= number of processes.')
+        rank -= 1    
+    else:
+        exit('ERROR: please call using ' + \
+             '"python sim_nsbh_analysis.py <n_procs> <rank>" format ' + \
+             'to specify number of processes and rank without MPI. ' + \
+             'NB: rank should be one-indexed.')
 else:
     n_procs = 1
     rank = 0
-
-# Set up a random seed for result reproducibility.  This is optional!
-if constrain:
-    np.random.seed(141023 + rank)
 
 # read list of all targets and assign
 targets = np.genfromtxt('data/remnant_sorted_detected.txt', delimiter=' ')
@@ -108,19 +117,29 @@ if remnants_only:
 n_inj = len(target_ids)
 job_list = allocate_jobs(n_inj, n_procs, rank)
 
+# optionally define list of random seeds for result reproducibility
+if constrain:
+    np.random.seed(141023 + rank)
+    seeds = np.random.random_integers(1, 10000000, len(job_list))
+
 # read in injection parameters from file
 raw_pars = np.genfromtxt('data/NSBH_samples_precessing_DD2_detected.dat', \
                          dtype=None, names=True, delimiter=',', \
                          encoding=None)
 
 # loop over assignments
-for job in job_list:
+for j in range(len(job_list)):
+
+    # optionally set random seed
+    if constrain:
+        np.random.seed(seeds[j])
 
     # find next injection
     # entries are simulation_id, mass1, mass2, spin1x, spin1y, spin1z, 
     # spin2x, spin2y, spin2z, distance, inclination, coa_phase, 
     # polarization, longitude, latitude, geocent_end_time, geocent_end_time_ns
     # can access these names using raw_pars.dtype.names
+    job = job_list[j]
     search_str = 'sim_inspiral:simulation_id:{:d}'.format(target_ids[job])
     inj_id = np.argwhere(raw_pars['simulation_id']==search_str)[0, 0]
     sel_pars = raw_pars[inj_id]
@@ -274,9 +293,9 @@ for job in job_list:
         to_fix += ['ra', 'dec']
         priors.pop('luminosity_distance')
         priors['luminosity_distance'] = \
-            bilby.prior.Gaussian(d_obs, sig_d_obs, \
-                                 name='luminosity_distance', unit='Mpc', \
-                                 latex_label='$D_L$')
+            bilby.prior.TruncatedGaussian(d_obs, sig_d_obs, 10.0, 5000.0, \
+                                          name='luminosity_distance', \
+                                          unit='Mpc', latex_label='$D_L$')
     for key in to_fix:
         priors[key] = injection_parameters[key]
 
