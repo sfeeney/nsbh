@@ -58,21 +58,15 @@ def allocate_all_jobs(n_jobs, n_procs=1):
 
 
 # @TODO
-# 1 - DONE: set up MPI
-# 2 - DONE: read in parameters
-# 3 - DONE: calculate deformabilities
-# 4 - DONE: convert AW's parameters to bilby for injection
-# 5 - DONE: set up prior: BNS w/ BBH mass range for m1, lambda1 fixed to zero
-# 6 - check all settings
 # 7 - check out psi definition. prior is 0->pi but injection is 4.03...
-# 8 - fix angular positions?
 
 # settings
 use_mpi = False
-duration = 8.0 # 32.0
+duration = 32.0 # 8.0
 sampling_frequency = 2048.
-minimum_frequency = 40.0 # 20.0
+minimum_frequency = 20.0 # 40.0
 reference_frequency = 14.0 # 50.0
+n_live = 2000
 zero_spins = False
 remnants_only = True
 tight_loc = True
@@ -220,6 +214,8 @@ for j in range(len(job_list)):
         label += '_zero_spins'
     if tight_loc:
         label += '_tight_loc'
+    if n_live != 1000:
+        label += '_nlive_{:04d}'.format(n_live)
     bilby.core.utils.setup_logger(outdir=outdir, label=label)
 
     # We are going to inject a binary neutron star waveform.  We first establish a
@@ -317,7 +313,7 @@ for j in range(len(job_list)):
     # The conversion function will determine the distance, phase and coalescence
     # time posteriors in post processing.
     result = bilby.run_sampler(likelihood=likelihood, priors=priors, \
-                               sampler='dynesty', npoints=1000, \
+                               sampler='dynesty', npoints=n_live, \
                                injection_parameters=injection_parameters, \
                                outdir=outdir, label=label, \
                                conversion_function=bilby.gw.conversion.generate_all_bns_parameters)
