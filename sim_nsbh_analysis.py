@@ -66,7 +66,8 @@ duration = 32.0 # 8.0
 sampling_frequency = 2048.
 minimum_frequency = 20.0 # 40.0
 reference_frequency = 14.0 # 50.0
-n_live = 2000
+ifo_list = ['H1', 'L1', 'V1', 'K1'] # ['H1', 'L1', 'V1']
+n_live = 1000
 zero_spins = False
 remnants_only = True
 tight_loc = True
@@ -207,7 +208,12 @@ for j in range(len(job_list)):
 
     # Specify the output directory and the name of the simulation.
     outdir = 'outdir'
-    label_str = 'nsbh_inj_{:d}_d_{:04.1f}_mf_{:4.1f}_rf_{:4.1f}'
+    if ifo_list == ['H1', 'L1', 'V1']:
+        ifo_str = ''
+    else:
+        ifo_str = '_'.join(ifo_list) + '_'
+    label_str = 'nsbh_inj_' + ifo_str + \
+                '{:d}_d_{:04.1f}_mf_{:4.1f}_rf_{:4.1f}'
     label = label_str.format(target_ids[job], duration, minimum_frequency, \
                              reference_frequency)
     if zero_spins:
@@ -246,10 +252,10 @@ for j in range(len(job_list)):
                                    parameter_conversion=bilby.gw.conversion.convert_to_lal_binary_neutron_star_parameters, \
                                    waveform_arguments=waveform_arguments)
 
-    # Set up interferometers.  In this case we'll use three interferometers:
+    # Set up interferometers.  Default is three interferometers:
     # LIGO-Hanford (H1), LIGO-Livingston (L1) and Virgo. These default to 
     # their design sensitivity
-    ifos = bilby.gw.detector.InterferometerList(['H1', 'L1', 'V1'])
+    ifos = bilby.gw.detector.InterferometerList(ifo_list)
     for ifo in ifos:
         ifo.minimum_frequency = minimum_frequency
     ifos.set_strain_data_from_power_spectral_densities(
@@ -277,6 +283,11 @@ for j in range(len(job_list)):
                                  maximum=injection_parameters['geocent_time'] + 0.1, \
                                  name='geocent_time', latex_label='$t_c$', \
                                  unit='$s$')
+    priors['lambda_2'] = bilby.core.prior.Uniform(name='lambda_2', \
+                                                  minimum=0.0, \
+                                                  maximum=4000.0, \
+                                                  latex_label=r'$\Lambda_2$', \
+                                                  boundary=None)
     to_fix = ['lambda_1']
     if zero_spins:
         to_fix += ['a_1', 'a_2', 'tilt_1', 'tilt_2', 'phi_12', 'phi_jl']
