@@ -725,11 +725,16 @@ axes[0, 0].axvline(s_per_event * n_inj / n_det, color='C1')
 axes[0, 0].axvline(np.mean(np.diff(data['geocent_end_time'][det])), \
                    color='C2', ls='--')
 d_grid = np.linspace(0.0, 800.0, 1000)
-dvdd = 4.0 * np.pi * d_grid ** 2 * (1.0 - 4.0 * h_0 * d_grid / c)
-#norm = d_grid[1] - d_grid[0]
-axes[0, 1].plot(d_grid, dvdd / np.sum(dvdd) / norm)
-dvdd = 4.0 * np.pi * d_grid ** 2
-axes[0, 1].plot(d_grid, dvdd / np.sum(dvdd) / norm, ls='--')
+if sample_z:
+    z_min = d2z(d_min, h_0, q_0)
+    z_max = d2z(d_max, h_0, q_0)
+    z_grid = np.linspace(z_min, z_max, 1000)
+    dvdd = dvolume_dz(z_grid, h_0, q_0, redshift_rate=redshift_rate) * \
+           dz_dd(z_grid, h_0, q_0)
+    axes[0, 1].plot(z2d(z_grid, h_0, q_0), dvdd / np.sum(dvdd) / norm)
+else:
+    dvdd = dvolume_dd(d_grid, h_0, q_0, order=3)
+    axes[0, 1].plot(d_grid, dvdd / np.sum(dvdd) / norm)
 i_grid = np.linspace(0.0, np.pi, 1000)
 #norm = i_grid[1] - i_grid[0]
 axes[0, 2].plot(i_grid, np.sin(i_grid) / np.sum(np.sin(i_grid)) / norm)
