@@ -10,6 +10,7 @@ import xml.etree.ElementTree as et
 import bilby
 import bilby.gw.utils as bu
 import bilby.gw.conversion as bc
+import bilby.gw.detector as bd
 import lalsimulation as lalsim
 import astropy.time as at
 import astropy.coordinates as ac
@@ -137,7 +138,7 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
                     q_0, m_min_1, m_max_1, m_mean_1, m_std_1, m_min_2, \
                     m_max_2, m_mean_2, m_std_2, a_min_1, a_max_1, \
                     a_min_2, a_max_2, seed=None, sample_z=False, \
-                    redshift_rate=False):
+                    redshift_rate=False, broad_bh_masses=False):
 
     # constrained realisation if desired
     if seed is not None:
@@ -190,10 +191,13 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
     longs = npr.uniform(0.0, 2.0 * np.pi, size=n_inj)
 
     # draw masses
-    dist = ss.truncnorm((m_min_1 - m_mean_1) / m_std_1, \
-                        (m_max_1 - m_mean_1) / m_std_1, \
-                        loc=m_mean_1, scale=m_std_1)
-    m_1s = dist.rvs(n_inj)
+    if broad_bh_masses:
+        m_1s = npr.uniform(m_min_1, m_max_1, size=n_inj)
+    else:
+        dist = ss.truncnorm((m_min_1 - m_mean_1) / m_std_1, \
+                            (m_max_1 - m_mean_1) / m_std_1, \
+                            loc=m_mean_1, scale=m_std_1)
+        m_1s = dist.rvs(n_inj)
     dist = ss.truncnorm((m_min_2 - m_mean_2) / m_std_2, \
                         (m_max_2 - m_mean_2) / m_std_2, \
                         loc=m_mean_2, scale=m_std_2)
@@ -249,24 +253,40 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
     return 1.0 / n_per_sec, data
 
 
-# @TODO
-# 1 - DONE: wrap lal population call
-# 2 - DONE: read in full population from XML
-# 3 - DONE: try to detect using bilby optimal filtering
-# 4 - DONE: generate mass of remnant
-# 5 - DONE: save everything in a way that is useful for the analysis code
 # QUESTIONS
-# 1 - AW's 50% duty cycle
+# 1 - DONE: AW's 50% duty cycle
 # 2 - DONE: _ns times (nanoseconds? but i don't know what they are) are 
 #     they the noninteger part of the start time?
 # 3 - DONE: LAL's volume seems to be increasing like there's no q_0.
 #     it doesn't use it. just uses volume...
 # 4 - SNRs: matched filter (signal vs data) or optimal filter (sig vs sig).
 #     and take abs of MF? or real part?
+#     matched filter, take magnitude
 # 5 - what SNR threshold?
+#      + 1709.08079: matched filter SNR in single det of >8
+#      + PPD PRL: all dets >6, combined >12
+#      + Chen Nature: combined >12
 # 6 - what mass / spin distributions should we use?
+#      + uniform spins seem standard
+#      + mass gap 2-5 M_sol, but not for some mergers!
+#      + broaden the Gaussian, at the very least. 1901.03345 says initial 
+#        mass dist of individual BHs goes as M^-2.35, which for their BBH
+#        simulations results in significant numbers of binaries with low 
+#        total mass (just greater than their min of 10 M_sol). the peak 
+#        total mass is 13-20, meaning individual masses peaked at 6.5-10, 
+#        dropping to ~50% of peak at 11 M_sol. so broaden Gaussian, at least. 
+#        1811.12940 says could be even wider (see fig 1). could even go 
+#        uniform from 5-40.
 # 7 - DONE: should include 1/(1+z) in dv/dd to account for time dilation. 
 #     could just sample in redshift and convert...
+
+# TO CONFIRM
+# 1 - rate. latest 90% UL is 610/Gpc^3/yr (1811.12907)
+# 2 - BH mass distribution
+# 3 - SNR threshold
+# 4 - spin distributions (consistent with PPD PRL)
+
+# @TODO: save lambda!
 
 # plot settings
 lw = 1.5
@@ -281,7 +301,7 @@ h_0 = 67.36 # km / s / Mpc
 q_0 = 0.5 * 0.3153 - 0.6847
 rate = 2.0e-6 # events / year / Mpc^3
 d_min = 0.0
-d_max = 800.0 # Mpc
+d_max = 1200.0 # Mpc
 t_start = 1325030418
 t_stop = 1388102418
 f_online = 0.5
@@ -294,12 +314,13 @@ n_to_store = len(to_store)
 use_lal = False
 sample_z = True
 redshift_rate = True
+broad_bh_masses = True
 
 # BH mass and spin dists
 m_min_bh = 5.0
-m_max_bh = 20.0
+m_max_bh = 40.0 # @TODO: extended from 20 for broad prior? no impact on Gaussian
 m_mean_bh = 8.0
-m_std_bh = 1.0 # suggest broadening this?
+m_std_bh = 1.0
 spin_min_bh = 0.0
 spin_max_bh = 0.5
 
@@ -317,7 +338,7 @@ duration = 32.0
 sampling_frequency = 2048.
 minimum_frequency = 20.0
 reference_frequency = 14.0
-ifo_list = ['H1', 'L1', 'V1', 'K1'] # ['H1', 'L1', 'V1']
+ifo_list = ['H1', 'L1', 'V1', 'K1', 'IndIGO'] # ['H1', 'L1', 'V1']
 outdir = 'data'
 
 # filename stub
@@ -331,6 +352,8 @@ if sample_z:
     label_str += '_dndz'
     if redshift_rate:
         label_str += '_rr'
+if broad_bh_masses:
+    label_str += '_bbhmp'
 label = label_str.format(duration, minimum_frequency, \
                          reference_frequency)
 
@@ -418,7 +441,8 @@ else:
                           m_mean_ns, m_std_ns, spin_min_bh, \
                           spin_max_bh, spin_min_ns, spin_max_ns, \
                           seed=seed, sample_z=sample_z, \
-                          redshift_rate=redshift_rate)
+                          redshift_rate=redshift_rate, \
+                          broad_bh_masses=broad_bh_masses)
     s_per_event = pop[0]
     data = pop[1]
     n_inj = data.shape[0]
@@ -503,10 +527,14 @@ axes[1, 0].plot(theta_grid, np.cos(theta_grid) / \
                             np.sum(np.cos(theta_grid)) / norm)
 axes[1, 1].axvline(0.0, color='C1')
 axes[1, 1].axvline(2.0 * np.pi, color='C1')
-m_grid = np.linspace(m_min_bh, m_mean_bh + 4.0 * m_std_bh, 1000)
-dndm = np.exp(-0.5 * ((m_grid - m_mean_bh) / m_std_bh) ** 2)
-dndm = dndm / np.sum(dndm) / norm
-axes[1, 2].plot(m_grid, dndm)
+if broad_bh_masses:
+    axes[1, 2].axvline(m_min_bh, color='C1')
+    axes[1, 2].axvline(m_max_bh, color='C1')
+else:
+    m_grid = np.linspace(m_min_bh, m_mean_bh + 4.0 * m_std_bh, 1000)
+    dndm = np.exp(-0.5 * ((m_grid - m_mean_bh) / m_std_bh) ** 2)
+    dndm = dndm / np.sum(dndm) / norm
+    axes[1, 2].plot(m_grid, dndm)
 m_grid = np.linspace(m_min_ns, m_mean_ns + 4.0 * m_std_ns, 1000)
 dndm = np.exp(-0.5 * ((m_grid - m_mean_ns) / m_std_ns) ** 2)
 dndm = dndm / np.sum(dndm) / norm
@@ -651,7 +679,18 @@ for j in range(n_inj):
     # Set up interferometers.  Default is three interferometers:
     # LIGO-Hanford (H1), LIGO-Livingston (L1) and Virgo. These default to 
     # their design sensitivity
-    ifos = bilby.gw.detector.InterferometerList(ifo_list)
+    all_bilby_ifo_list = ['CE', 'ET', 'GEO600', 'H1', 'K1', 'L1', 'V1']
+    bilby_ifo_list = list(set(ifo_list) & set(all_bilby_ifo_list))
+    local_ifo_list = list(np.setdiff1d(ifo_list, all_bilby_ifo_list, \
+                          assume_unique=True))
+    ifos = bilby.gw.detector.InterferometerList(bilby_ifo_list)
+    for ifo in local_ifo_list:
+        local_ifo_file = './data/' + ifo + '.interferometer'
+        try:
+            ifos.append(bd.load_interferometer(local_ifo_file))
+        except OSError:
+            raise ValueError('Interferometer ' + ifo + ' not implemented')
+    ifos._check_interferometers()
     for ifo in ifos:
         ifo.minimum_frequency = minimum_frequency
     ifos.set_strain_data_from_power_spectral_densities(
@@ -744,11 +783,14 @@ axes[1, 0].plot(theta_grid, np.cos(theta_grid) / \
                             np.sum(np.cos(theta_grid)) / norm)
 axes[1, 1].axvline(0.0, color='C1')
 axes[1, 1].axvline(2.0 * np.pi, color='C1')
-m_grid = np.linspace(m_min_bh, m_mean_bh + 4.0 * m_std_bh, 1000)
-#norm = m_grid[1] - m_grid[0]
-dndm = np.exp(-0.5 * ((m_grid - m_mean_bh) / m_std_bh) ** 2)
-dndm = dndm / np.sum(dndm) / norm
-axes[1, 2].plot(m_grid, dndm)
+if broad_bh_masses:
+    axes[1, 2].axvline(m_min_bh, color='C1')
+    axes[1, 2].axvline(m_max_bh, color='C1')
+else:
+    m_grid = np.linspace(m_min_bh, m_mean_bh + 4.0 * m_std_bh, 1000)
+    dndm = np.exp(-0.5 * ((m_grid - m_mean_bh) / m_std_bh) ** 2)
+    dndm = dndm / np.sum(dndm) / norm
+    axes[1, 2].plot(m_grid, dndm)
 m_grid = np.linspace(m_min_ns, m_mean_ns + 4.0 * m_std_ns, 1000)
 #norm = m_grid[1] - m_grid[0]
 dndm = np.exp(-0.5 * ((m_grid - m_mean_ns) / m_std_ns) ** 2)

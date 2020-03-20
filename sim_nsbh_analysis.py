@@ -9,6 +9,7 @@ import numpy as np
 import bilby
 import bilby.gw.utils as bu
 import bilby.gw.conversion as bc
+import bilby.gw.detector as bd
 import lalsimulation as lalsim
 import astropy.time as at
 import astropy.coordinates as ac
@@ -56,22 +57,48 @@ def allocate_all_jobs(n_jobs, n_procs=1):
         n_j_allocated += n_j_to_allocate
     return allocation
 
+# LAL detector azimuth angles measured clockwise from north. bilby 
+# azimuth angles measured anticlockwise from east. helpful link for 
+# checking: https://www.ligo.org/scientists/GW100916/detectors.txt
+def convert_azimuth(azi):
+
+    new = np.pi / 2.0 - azi
+    if new < 0.0:
+        new += 2.0 * np.pi
+
+    return new
+
 
 # @TODO
 # 7 - check out psi definition. prior is 0->pi but injection is 4.03...
+# DONE: 8 - input file tweaks. remnant mass in there, as is snr
+# DONE: 9 - add ligo india
+# 10 - modify chirp mass and 1/q priors to reflect new mass BH prior?
+# DONE: 11 - extend distance prior for unknown H_0 case
+# DONE: 12 - fixed angular position but unknown distance option
+# 13 - save calculated lambda to file rather than regenerating
+# 14 - check bilby.gw.prior.UniformSourceFrame. redshifted rate? h_0/q_0?
+#      likely it's not going to be consistent
+
+# NB: broadening mass prior reduces mergers with non-zero remnant
 
 # settings
 use_mpi = False
+snr_thresh = 12.0
 duration = 32.0 # 8.0
 sampling_frequency = 2048.
 minimum_frequency = 20.0 # 40.0
 reference_frequency = 14.0 # 50.0
-ifo_list = ['H1', 'L1', 'V1', 'K1'] # ['H1', 'L1', 'V1']
+ifo_list = ['H1', 'L1', 'V1', 'K1', 'IndIGO'] # ['H1', 'L1', 'V1']
 n_live = 1000
 zero_spins = False
 remnants_only = True
 tight_loc = True
+fixed_ang = True
 constrain = True
+sample_z = True
+redshift_rate = True
+broad_bh_masses = True
 
 # settings for tight localisation: known angular position, distance 
 # constrained to be approximately Gaussian by redshift, peculiar 
@@ -92,7 +119,7 @@ elif len(sys.argv) > 1:
     if len(sys.argv) == 3:
         n_procs = int(sys.argv[1])
         rank = int(sys.argv[2])
-        if rank > n_procs or rank < 0:
+        if rank > n_procs or rank < 1:
             exit('ERROR: 1 <= rank <= number of processes.')
         rank -= 1    
     else:
@@ -104,23 +131,39 @@ else:
     n_procs = 1
     rank = 0
 
-# read list of all targets and assign
-targets = np.genfromtxt('data/remnant_sorted_detected.txt', delimiter=' ')
-target_ids = targets[:, 0].astype(int)
+# filename stub
+if ifo_list == ['H1', 'L1', 'V1']:
+    ifo_str = ''
+else:
+    ifo_str = '_'.join(ifo_list) + '_'
+label_str = 'nsbh_pop_' + ifo_str + \
+            'd_{:04.1f}_mf_{:4.1f}_rf_{:4.1f}'
+if sample_z:
+    label_str += '_dndz'
+    if redshift_rate:
+        label_str += '_rr'
+if broad_bh_masses:
+    label_str += '_bbhmp'
+base_label = label_str.format(duration, minimum_frequency, \
+                              reference_frequency)
+
+# read in injections from file, select which to process, and assign
+# to processes
+par_file = base_label + '.txt'
+raw_pars = np.genfromtxt('data/' + par_file, \
+                         dtype=None, names=True, delimiter=',', \
+                         encoding=None)
+det = raw_pars['snr'] >= snr_thresh
 if remnants_only:
-    target_ids = target_ids[targets[:, 1] > 0.0]
-n_inj = len(target_ids)
+    det = np.logical_and(det, raw_pars['remnant_mass'] > 0.0)
+raw_pars = raw_pars[det]
+n_inj = np.sum(det)
 job_list = allocate_jobs(n_inj, n_procs, rank)
 
 # optionally define list of random seeds for result reproducibility
 if constrain:
     np.random.seed(141023 + rank)
     seeds = np.random.random_integers(1, 10000000, len(job_list))
-
-# read in injection parameters from file
-raw_pars = np.genfromtxt('data/NSBH_samples_precessing_DD2_detected.dat', \
-                         dtype=None, names=True, delimiter=',', \
-                         encoding=None)
 
 # loop over assignments
 for j in range(len(job_list)):
@@ -132,12 +175,11 @@ for j in range(len(job_list)):
     # find next injection
     # entries are simulation_id, mass1, mass2, spin1x, spin1y, spin1z, 
     # spin2x, spin2y, spin2z, distance, inclination, coa_phase, 
-    # polarization, longitude, latitude, geocent_end_time, geocent_end_time_ns
+    # polarization, longitude, latitude, geocent_end_time, 
+    # geocent_end_time_ns, remnant_mass and snr
     # can access these names using raw_pars.dtype.names
-    job = job_list[j]
-    search_str = 'sim_inspiral:simulation_id:{:d}'.format(target_ids[job])
-    inj_id = np.argwhere(raw_pars['simulation_id']==search_str)[0, 0]
-    sel_pars = raw_pars[inj_id]
+    sel_pars = raw_pars[job_list[j]]
+    inj_id = int(sel_pars['simulation_id'].split(':')[-1])
 
     # extract mass and orbital parameters
     mass_1 = sel_pars['mass1']
@@ -208,18 +250,13 @@ for j in range(len(job_list)):
 
     # Specify the output directory and the name of the simulation.
     outdir = 'outdir'
-    if ifo_list == ['H1', 'L1', 'V1']:
-        ifo_str = ''
-    else:
-        ifo_str = '_'.join(ifo_list) + '_'
-    label_str = 'nsbh_inj_' + ifo_str + \
-                '{:d}_d_{:04.1f}_mf_{:4.1f}_rf_{:4.1f}'
-    label = label_str.format(target_ids[job], duration, minimum_frequency, \
-                             reference_frequency)
+    label = base_label + '_inj_{:d}'.format(inj_id)
     if zero_spins:
         label += '_zero_spins'
     if tight_loc:
         label += '_tight_loc'
+        elif fixed_ang:
+            label += '_fixed_ang'
     if n_live != 1000:
         label += '_nlive_{:04d}'.format(n_live)
     bilby.core.utils.setup_logger(outdir=outdir, label=label)
@@ -255,7 +292,18 @@ for j in range(len(job_list)):
     # Set up interferometers.  Default is three interferometers:
     # LIGO-Hanford (H1), LIGO-Livingston (L1) and Virgo. These default to 
     # their design sensitivity
-    ifos = bilby.gw.detector.InterferometerList(ifo_list)
+    all_bilby_ifo_list = ['CE', 'ET', 'GEO600', 'H1', 'K1', 'L1', 'V1']
+    bilby_ifo_list = list(set(ifo_list) & set(all_bilby_ifo_list))
+    local_ifo_list = list(np.setdiff1d(ifo_list, all_bilby_ifo_list, \
+                          assume_unique=True))
+    ifos = bilby.gw.detector.InterferometerList(bilby_ifo_list)
+    for ifo in local_ifo_list:
+        local_ifo_file = './data/' + ifo + '.interferometer'
+        try:
+            ifos.append(bd.load_interferometer(local_ifo_file))
+        except OSError:
+            raise ValueError('Interferometer ' + ifo + ' not implemented')
+    ifos._check_interferometers()
     for ifo in ifos:
         ifo.minimum_frequency = minimum_frequency
     ifos.set_strain_data_from_power_spectral_densities(
@@ -303,6 +351,13 @@ for j in range(len(job_list)):
             bilby.prior.TruncatedGaussian(d_obs, sig_d_obs, 10.0, 5000.0, \
                                           name='luminosity_distance', \
                                           unit='Mpc', latex_label='$D_L$')
+    elif fixed_ang:
+        to_fix += ['ra', 'dec']
+        priors.pop('luminosity_distance')
+        priors['luminosity_distance'] = \
+            bilby.gw.prior.UniformSourceFrame(name='luminosity_distance', \
+                                              minimum=10.0, maximum=5000.0, \
+                                              unit='Mpc', boundary=None)
     for key in to_fix:
         priors[key] = injection_parameters[key]
 

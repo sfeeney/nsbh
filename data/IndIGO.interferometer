@@ -1,0 +1,11 @@
+# LIGO India
+name = 'indigo'
+power_spectral_density = PowerSpectralDensity(psd_file='aLIGO_ZERO_DET_high_P_psd.txt')
+minimum_frequency = 20
+maximum_frequency = 2048
+length = 4
+latitude = 19.6133
+longitude = 77.0308
+elevation = 547.00
+xarm_azimuth = 212.8713
+yarm_azimuth = 122.8728
