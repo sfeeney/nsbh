@@ -79,6 +79,7 @@ def convert_azimuth(azi):
 # 13 - save calculated lambda to file rather than regenerating
 # 14 - check bilby.gw.prior.UniformSourceFrame. redshifted rate? h_0/q_0?
 #      likely it's not going to be consistent
+# 15 - add on nanosecond timing!
 
 # NB: broadening mass prior reduces mergers with non-zero remnant
 
@@ -255,8 +256,8 @@ for j in range(len(job_list)):
         label += '_zero_spins'
     if tight_loc:
         label += '_tight_loc'
-        elif fixed_ang:
-            label += '_fixed_ang'
+    elif fixed_ang:
+        label += '_fixed_ang'
     if n_live != 1000:
         label += '_nlive_{:04d}'.format(n_live)
     bilby.core.utils.setup_logger(outdir=outdir, label=label)
