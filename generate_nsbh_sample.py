@@ -17,6 +17,7 @@ import astropy.coordinates as ac
 import astropy.units as au
 import ns_eos_aw as nseos
 import math
+import pickle
 
 def dd2_lambda_from_mass(m):
     return 1.60491e6 - 23020.6 * m**-5 + 194720. * m**-4 - 658596. * m**-3 \
@@ -286,8 +287,6 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
 # 3 - SNR threshold
 # 4 - spin distributions (consistent with PPD PRL)
 
-# @TODO: save lambda!
-
 # plot settings
 lw = 1.5
 mp.rc('font', family='serif', size=10)
@@ -303,7 +302,8 @@ rate = 2.0e-6 # events / year / Mpc^3
 d_min = 0.0
 d_max = 1200.0 # Mpc
 t_start = 1325030418
-t_stop = 1388102418
+t_obs = 5.0 # 2 # years
+t_stop = t_start + t_obs * 3600 * 24 * 365
 f_online = 0.5
 seed = 141023
 to_store = ['simulation_id', 'mass1', 'mass2', 'spin1x', 'spin1y', 'spin1z', \
@@ -469,7 +469,8 @@ has_remnant = remnant_masses > 0.0
 
 # population plots. start with histograms
 fig, axes = mp.subplots(4, 3, figsize=(10, 15))
-axes[0, 0].hist(np.diff(data['geocent_end_time']))
+axes[0, 0].hist(np.diff(data['geocent_end_time'] + \
+                        data['geocent_end_time_ns'] * 1.0e-9))
 axes[0, 1].hist(data['distance'])
 axes[0, 2].hist(data['inclination'])
 axes[1, 0].hist(data['latitude'])
@@ -503,7 +504,8 @@ axes[3, 2].set_xlabel(r'$\Lambda_{\rm NS}$')
 # plot expectations
 norm = 10.0 / n_inj / 1000.0 # sum to n_inj; 1000-point grids; 10-point hists
 axes[0, 0].axvline(s_per_event, color='C1')
-axes[0, 0].axvline(np.mean(np.diff(data['geocent_end_time'])), \
+axes[0, 0].axvline(np.mean(np.diff(data['geocent_end_time'] + \
+                                   data['geocent_end_time_ns'] * 1.0e-9)), \
                    color='C2', ls='--')
 d_grid = np.linspace(d_min, 800.0, 1000)
 if sample_z:
@@ -588,17 +590,13 @@ bilby.core.utils.setup_logger(outdir=outdir, label=label, \
 
 # see what we can detect with bilby!
 print('calculating SNRs')
-np.random.seed(141023)
-seeds = np.random.random_integers(1, 10000000, n_inj)
+rng_states = []
 snrs = np.zeros(n_inj)
 for j in range(n_inj):
 
     # report progress
     if j % 100 == 0:
         print('{:d}/{:d} SNRs calculated'.format(j, n_inj))
-
-    # set random seed
-    np.random.seed(seeds[j])
 
     # set up next injection. extract mass and orbital parameters
     mass_1 = data['mass1'][j]
@@ -612,12 +610,13 @@ for j in range(n_inj):
     iota = data['inclination'][j]
     phase = data['coa_phase'][j]
     distance = data['distance'][j]
-    time = float(data['geocent_end_time'][j])
+    time = float(data['geocent_end_time'][j] + \
+                 data['geocent_end_time_ns'][j] * 1.0e-9)
     pol = data['polarization'][j]
     lon = data['longitude'][j]
     lat = data['latitude'][j]
     lambda_1 = 0.0
-    lambda_2 = dd2_lambda_from_mass(mass_2)
+    lambda_2 = lambdas[j]
 
     # convert longitude and latitude (in radians) to RA, DEC (in radians)
     t = at.Time(time, format='gps')
@@ -647,6 +646,10 @@ for j in range(n_inj):
                                                      phase))
         print('percentage error in conversions:')
         print((outputs - inputs) / inputs * 100.0)
+
+    # store random state to ensure exact same data used by detection
+    # and inference codes
+    rng_states.append(np.random.get_state())
 
     # We are going to inject a binary neutron star waveform.  We first establish a
     # dictionary of parameters that includes all of the different waveform
@@ -680,9 +683,9 @@ for j in range(n_inj):
     # LIGO-Hanford (H1), LIGO-Livingston (L1) and Virgo. These default to 
     # their design sensitivity
     all_bilby_ifo_list = ['CE', 'ET', 'GEO600', 'H1', 'K1', 'L1', 'V1']
-    bilby_ifo_list = list(set(ifo_list) & set(all_bilby_ifo_list))
-    local_ifo_list = list(np.setdiff1d(ifo_list, all_bilby_ifo_list, \
-                          assume_unique=True))
+    bilby_ifo_list = sorted(list(set(ifo_list) & set(all_bilby_ifo_list)))
+    local_ifo_list = sorted(list(np.setdiff1d(ifo_list, all_bilby_ifo_list, \
+                                              assume_unique=True)))
     ifos = bilby.gw.detector.InterferometerList(bilby_ifo_list)
     for ifo in local_ifo_list:
         local_ifo_file = './data/' + ifo + '.interferometer'
@@ -707,7 +710,6 @@ for j in range(n_inj):
         mf_snrs.append(abs(ifo.meta_data['matched_filter_SNR']))
     opt_snrs = np.array(opt_snrs)
     mf_snrs = np.array(mf_snrs)
-    #snrs[j] = np.sqrt(np.sum(opt_snrs ** 2))
     snrs[j] = np.sqrt(np.sum(mf_snrs ** 2))
 
 # define detected sample
@@ -731,7 +733,8 @@ mp.close(fig_snr)
 
 # plot parameter distributions for detected events
 fig, axes = mp.subplots(4, 3, figsize=(10, 15))
-axes[0, 0].hist(np.diff(data['geocent_end_time'][det]))
+axes[0, 0].hist(np.diff(data['geocent_end_time'][det] + \
+                        data['geocent_end_time_ns'][det] * 1.0e-9))
 axes[0, 1].hist(data['distance'][det])
 axes[0, 2].hist(data['inclination'][det])
 axes[1, 0].hist(data['latitude'][det])
@@ -761,7 +764,8 @@ axes[3, 1].set_xlabel(r'$m_{\rm remnant}>0$')
 axes[3, 2].set_xlabel(r'$\Lambda_{\rm NS}$')
 norm = 10.0 / n_det / 1000.0 # sum to n_inj; 1000-point grids; 10-point hists
 axes[0, 0].axvline(s_per_event * n_inj / n_det, color='C1')
-axes[0, 0].axvline(np.mean(np.diff(data['geocent_end_time'][det])), \
+axes[0, 0].axvline(np.mean(np.diff(data['geocent_end_time'][det] + \
+                                   data['geocent_end_time_ns'][det] * 1.0e-9)), \
                    color='C2', ls='--')
 d_grid = np.linspace(0.0, 800.0, 1000)
 if sample_z:
@@ -841,9 +845,9 @@ mp.close(fig_dq)
 # save everything to file
 fmt = '{:s},{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},' + \
       '{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},{:d},' + \
-      '{:d},{:.9e},{:.9e}'
+      '{:d},{:.9e},{:.9e},{:.9e}'
 with open('data/' + label + '.txt', 'w') as f:
-    f.write('#' + ','.join(to_store) + ',remnant_mass,snr')
+    f.write('#' + ','.join(to_store) + ',lambda_2,remnant_mass,snr')
     for i in range(n_inj):
         f.write('\n' + \
                 fmt.format(data['simulation_id'][i], data['mass1'][i], \
@@ -854,6 +858,9 @@ with open('data/' + label + '.txt', 'w') as f:
                            data['inclination'][i], data['coa_phase'][i], \
                            data['polarization'][i], data['longitude'][i], \
                            data['latitude'][i], data['geocent_end_time'][i], \
-                           data['geocent_end_time_ns'][i], \
+                           data['geocent_end_time_ns'][i], lambdas[i], \
                            remnant_masses[i], snrs[i]))
 
+# save random states to file
+with open('data/' + label + '_rng_states.bin', 'wb') as f:
+    pickle.dump(rng_states, f)

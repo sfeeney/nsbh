@@ -15,11 +15,7 @@ import astropy.time as at
 import astropy.coordinates as ac
 import astropy.units as au
 import sys
-
-def dd2_lambda_from_mass(m):
-    return 1.60491e6 - 23020.6 * m**-5 + 194720. * m**-4 - 658596. * m**-3 \
-        + 1.33938e6 * m**-2 - 1.78004e6 * m**-1 - 992989. * m + 416080. * m**2 \
-        - 112946. * m**3 + 17928.5 * m**4 - 1263.34 * m**5
+import pickle
 
 def inverse_transform_precessing_spins(iota, spin_1x, spin_1y, \
                                        spin_1z, spin_2x, spin_2y, \
@@ -71,15 +67,9 @@ def convert_azimuth(azi):
 
 # @TODO
 # 7 - check out psi definition. prior is 0->pi but injection is 4.03...
-# DONE: 8 - input file tweaks. remnant mass in there, as is snr
-# DONE: 9 - add ligo india
 # 10 - modify chirp mass and 1/q priors to reflect new mass BH prior?
-# DONE: 11 - extend distance prior for unknown H_0 case
-# DONE: 12 - fixed angular position but unknown distance option
-# 13 - save calculated lambda to file rather than regenerating
 # 14 - check bilby.gw.prior.UniformSourceFrame. redshifted rate? h_0/q_0?
 #      likely it's not going to be consistent
-# 15 - add on nanosecond timing!
 
 # NB: broadening mass prior reduces mergers with non-zero remnant
 
@@ -96,7 +86,6 @@ zero_spins = False
 remnants_only = True
 tight_loc = True
 fixed_ang = True
-constrain = True
 sample_z = True
 redshift_rate = True
 broad_bh_masses = True
@@ -161,17 +150,23 @@ raw_pars = raw_pars[det]
 n_inj = np.sum(det)
 job_list = allocate_jobs(n_inj, n_procs, rank)
 
-# optionally define list of random seeds for result reproducibility
-if constrain:
-    np.random.seed(141023 + rank)
-    seeds = np.random.random_integers(1, 10000000, len(job_list))
+# read in random states used to generate data when calculating 
+# SNRs. this way, detection and inference data are the same.
+with open('data/' + base_label + '_rng_states.bin', 'rb') as f:
+    all_rng_states = pickle.load(f)
+rng_states = []
+for i in range(len(det)):
+    if det[i]:
+        rng_states.append(all_rng_states[i])
+
+# generate random deviates used to generate noisy distance estimates
+# if required
+if tight_loc:
+    np.random.seed(141023)
+    frac_delta_d_obs = np.random.randn(n_inj)
 
 # loop over assignments
 for j in range(len(job_list)):
-
-    # optionally set random seed
-    if constrain:
-        np.random.seed(seeds[j])
 
     # find next injection
     # entries are simulation_id, mass1, mass2, spin1x, spin1y, spin1z, 
@@ -194,12 +189,13 @@ for j in range(len(job_list)):
     iota = sel_pars['inclination']
     phase = sel_pars['coa_phase']
     distance = sel_pars['distance']
-    time = float(sel_pars['geocent_end_time'])
+    time = float(sel_pars['geocent_end_time']) + \
+           sel_pars['geocent_end_time_ns'] * 1.0e-9
     pol = sel_pars['polarization']
     lon = sel_pars['longitude']
     lat = sel_pars['latitude']
     lambda_1 = 0.0
-    lambda_2 = dd2_lambda_from_mass(mass_2)
+    lambda_2 = sel_pars['lambda_2']
 
     # optionally zero spin parameters
     if zero_spins:
@@ -218,7 +214,7 @@ for j in range(len(job_list)):
         sig_d_obs = np.sqrt((sig_h_0_obs / h_0_obs) ** 2 + \
                             (sig_v_rec_obs / h_0_obs / distance) ** 2) * \
                     distance
-        d_obs = distance + np.random.randn() * sig_d_obs
+        d_obs = distance + frac_delta_d_obs[job_list[j]] * sig_d_obs
 
     # convert longitude and latitude (in radians) to RA, DEC (in radians)
     t = at.Time(time, format='gps')
@@ -262,6 +258,10 @@ for j in range(len(job_list)):
         label += '_nlive_{:04d}'.format(n_live)
     bilby.core.utils.setup_logger(outdir=outdir, label=label)
 
+    # set random state to ensure exact same data used by detection
+    # and inference codes
+    np.random.set_state(rng_states[job_list[j]])
+
     # We are going to inject a binary neutron star waveform.  We first establish a
     # dictionary of parameters that includes all of the different waveform
     # parameters, including masses of the black hole (mass_1) and NS (mass_2),
@@ -294,9 +294,9 @@ for j in range(len(job_list)):
     # LIGO-Hanford (H1), LIGO-Livingston (L1) and Virgo. These default to 
     # their design sensitivity
     all_bilby_ifo_list = ['CE', 'ET', 'GEO600', 'H1', 'K1', 'L1', 'V1']
-    bilby_ifo_list = list(set(ifo_list) & set(all_bilby_ifo_list))
-    local_ifo_list = list(np.setdiff1d(ifo_list, all_bilby_ifo_list, \
-                          assume_unique=True))
+    bilby_ifo_list = sorted(list(set(ifo_list) & set(all_bilby_ifo_list)))
+    local_ifo_list = sorted(list(np.setdiff1d(ifo_list, all_bilby_ifo_list, \
+                                              assume_unique=True)))
     ifos = bilby.gw.detector.InterferometerList(bilby_ifo_list)
     for ifo in local_ifo_list:
         local_ifo_file = './data/' + ifo + '.interferometer'
@@ -312,7 +312,7 @@ for j in range(len(job_list)):
         start_time=injection_parameters['geocent_time'] + 2 - duration)
     ifos.inject_signal(waveform_generator=waveform_generator, \
                        parameters=injection_parameters)
-
+    
     # Load the default prior for binary neutron stars.
     # We're going to sample in chirp_mass, mass_ratio and lambda_2 for now.
     # BNS have aligned spins by default, so allow precessing spins
