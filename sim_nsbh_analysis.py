@@ -84,11 +84,12 @@ ifo_list = ['H1', 'L1', 'V1', 'K1', 'IndIGO'] # ['H1', 'L1', 'V1']
 n_live = 1000
 zero_spins = False
 remnants_only = True
-tight_loc = True
+tight_loc = False
 fixed_ang = True
 sample_z = True
 redshift_rate = True
 broad_bh_masses = True
+lam_det_test = True
 
 # settings for tight localisation: known angular position, distance 
 # constrained to be approximately Gaussian by redshift, peculiar 
@@ -136,6 +137,8 @@ if broad_bh_masses:
     label_str += '_bbhmp'
 base_label = label_str.format(duration, minimum_frequency, \
                               reference_frequency)
+if lam_det_test:
+    base_label = 'lam_det_test'
 
 # read in injections from file, select which to process, and assign
 # to processes
@@ -229,7 +232,7 @@ for j in range(len(job_list)):
                                                    spin_2z, mass_1, mass_2, \
                                                    reference_frequency, phase)
     theta_jn, phi_jl, tilt_1, tilt_2, phi_12, a_1, a_2 = converted
-    check_conversion = True
+    check_conversion = False
     if check_conversion and not zero_spins:
         mass_1_kg = mass_1 * 1.98847e30
         mass_2_kg = mass_2 * 1.98847e30
