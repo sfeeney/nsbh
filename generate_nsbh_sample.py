@@ -139,7 +139,7 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
                     q_0, m_min_1, m_max_1, m_mean_1, m_std_1, m_min_2, \
                     m_max_2, m_mean_2, m_std_2, a_min_1, a_max_1, \
                     a_min_2, a_max_2, seed=None, sample_z=False, \
-                    redshift_rate=False, broad_bh_masses=False):
+                    redshift_rate=False, uniform_bh_masses=False):
 
     # constrained realisation if desired
     if seed is not None:
@@ -192,7 +192,7 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
     longs = npr.uniform(0.0, 2.0 * np.pi, size=n_inj)
 
     # draw masses
-    if broad_bh_masses:
+    if uniform_bh_masses:
         m_1s = npr.uniform(m_min_1, m_max_1, size=n_inj)
     else:
         dist = ss.truncnorm((m_min_1 - m_mean_1) / m_std_1, \
@@ -295,14 +295,20 @@ mp.rcParams['axes.linewidth'] = lw
 mp.rcParams['lines.linewidth'] = lw
 
 # settings
+min_network = True
+if min_network:
+    ifo_list = ['H1', 'L1', 'V1', 'K1-']
+    t_obs = 3.0 # years
+else:
+    ifo_list = ['H1+', 'L1+', 'V1+', 'K1+', 'A1']
+    t_obs = 5.0 # years
 c = 2.998e5 # km / s
 h_0 = 67.36 # km / s / Mpc
 q_0 = 0.5 * 0.3153 - 0.6847
-rate = 2.0e-6 # events / year / Mpc^3
+rate = 6.1e-7 # 2.0e-6 # events / year / Mpc^3
 d_min = 0.0
-d_max = 1200.0 # Mpc
+d_max = 1500.0 # 1200.0 # Mpc
 t_start = 1325030418
-t_obs = 5.0 # 2 # years
 t_stop = t_start + t_obs * 3600 * 24 * 365
 f_online = 0.5
 seed = 141023
@@ -314,15 +320,27 @@ n_to_store = len(to_store)
 use_lal = False
 sample_z = True
 redshift_rate = True
-broad_bh_masses = True
+uniform_bh_masses = True
+low_metals = False
+broad_bh_spins = False
 
 # BH mass and spin dists
-m_min_bh = 5.0
-m_max_bh = 40.0 # @TODO: extended from 20 for broad prior? no impact on Gaussian
+if uniform_bh_masses:
+    m_min_bh = 2.5
+    if low_metals:
+        m_max_bh = 40.0
+    else:
+        m_max_bh = 12.0
+else:
+    m_min_bh = 5.0
+    m_max_bh = 20.0
 m_mean_bh = 8.0
 m_std_bh = 1.0
 spin_min_bh = 0.0
-spin_max_bh = 0.5
+if broad_bh_spins:
+    spin_max_bh = 0.99
+else:
+    spin_max_bh = 0.5
 
 # NS mass and spin dists
 m_min_ns = 1.0
@@ -338,7 +356,6 @@ duration = 32.0
 sampling_frequency = 2048.
 minimum_frequency = 20.0
 reference_frequency = 14.0
-ifo_list = ['H1', 'L1', 'V1', 'K1', 'IndIGO'] # ['H1', 'L1', 'V1']
 outdir = 'data'
 
 # filename stub
@@ -352,8 +369,10 @@ if sample_z:
     label_str += '_dndz'
     if redshift_rate:
         label_str += '_rr'
-if broad_bh_masses:
-    label_str += '_bbhmp'
+if uniform_bh_masses:
+    label_str += '_ubhmp_{:.1f}_{:.1f}'.format(m_min_bh, m_max_bh)
+if broad_bh_spins:
+    label_str += '_bbhsp'
 label = label_str.format(duration, minimum_frequency, \
                          reference_frequency)
 
@@ -442,7 +461,7 @@ else:
                           spin_max_bh, spin_min_ns, spin_max_ns, \
                           seed=seed, sample_z=sample_z, \
                           redshift_rate=redshift_rate, \
-                          broad_bh_masses=broad_bh_masses)
+                          uniform_bh_masses=uniform_bh_masses)
     s_per_event = pop[0]
     data = pop[1]
     n_inj = data.shape[0]
@@ -466,6 +485,7 @@ for i in range(n_inj):
     m = nseos.Foucart(sim, eos="DD2")
     remnant_masses[i] = m.remnant_mass()
 has_remnant = remnant_masses > 0.0
+n_rem = np.sum(has_remnant)
 
 # population plots. start with histograms
 fig, axes = mp.subplots(4, 3, figsize=(10, 15))
@@ -529,7 +549,7 @@ axes[1, 0].plot(theta_grid, np.cos(theta_grid) / \
                             np.sum(np.cos(theta_grid)) / norm)
 axes[1, 1].axvline(0.0, color='C1')
 axes[1, 1].axvline(2.0 * np.pi, color='C1')
-if broad_bh_masses:
+if uniform_bh_masses:
     axes[1, 2].axvline(m_min_bh, color='C1')
     axes[1, 2].axvline(m_max_bh, color='C1')
 else:
@@ -688,7 +708,7 @@ for j in range(n_inj):
                                               assume_unique=True)))
     ifos = bilby.gw.detector.InterferometerList(bilby_ifo_list)
     for ifo in local_ifo_list:
-        local_ifo_file = './data/' + ifo + '.interferometer'
+        local_ifo_file = './data/detectors/' + ifo + '.interferometer'
         try:
             ifos.append(bd.load_interferometer(local_ifo_file))
         except OSError:
@@ -787,7 +807,7 @@ axes[1, 0].plot(theta_grid, np.cos(theta_grid) / \
                             np.sum(np.cos(theta_grid)) / norm)
 axes[1, 1].axvline(0.0, color='C1')
 axes[1, 1].axvline(2.0 * np.pi, color='C1')
-if broad_bh_masses:
+if uniform_bh_masses:
     axes[1, 2].axvline(m_min_bh, color='C1')
     axes[1, 2].axvline(m_max_bh, color='C1')
 else:
@@ -864,3 +884,10 @@ with open('data/' + label + '.txt', 'w') as f:
 # save random states to file
 with open('data/' + label + '_rng_states.bin', 'wb') as f:
     pickle.dump(rng_states, f)
+
+# final report
+n_det_rem = np.sum(np.logical_and(has_remnant, det))
+print(n_inj, 'mergers simulated')
+print(n_det, 'mergers detected')
+print(n_rem, 'mergers with non-zero remnant mass')
+print(n_det_rem, 'mergers detected with non-zero remnant mass')

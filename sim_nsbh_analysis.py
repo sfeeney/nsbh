@@ -80,7 +80,8 @@ duration = 32.0 # 8.0
 sampling_frequency = 2048.
 minimum_frequency = 20.0 # 40.0
 reference_frequency = 14.0 # 50.0
-ifo_list = ['H1', 'L1', 'V1', 'K1', 'IndIGO'] # ['H1', 'L1', 'V1']
+ifo_list = ['H1', 'L1', 'V1', 'K1-'] # ['H1', 'L1', 'V1']
+ifo_list = ['H1+', 'L1+', 'V1+', 'K1+', 'A1'] # ['H1', 'L1', 'V1']
 n_live = 1000
 zero_spins = False
 remnants_only = True
@@ -302,7 +303,7 @@ for j in range(len(job_list)):
                                               assume_unique=True)))
     ifos = bilby.gw.detector.InterferometerList(bilby_ifo_list)
     for ifo in local_ifo_list:
-        local_ifo_file = './data/' + ifo + '.interferometer'
+        local_ifo_file = './data/detectors/' + ifo + '.interferometer'
         try:
             ifos.append(bd.load_interferometer(local_ifo_file))
         except OSError:

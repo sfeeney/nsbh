@@ -1,0 +1,12 @@
+# Updated LIGO India Observatory definition (20/04/20)
+# Noise ASD: https://dcc.ligo.org/LIGO-T2000012/public
+name = 'A1'
+power_spectral_density = PowerSpectralDensity(psd_file='/Users/sfeeney/Software_Packages/nsbh/data/noise_curves/LVC_AplusDesign_PSD.txt')
+minimum_frequency = 20
+maximum_frequency = 2048
+length = 4
+latitude = 19.61330602800853
+longitude = 77.03086102772589
+elevation = 440.00
+xarm_azimuth = 117.61565555546836
+yarm_azimuth = 207.61646944460054
