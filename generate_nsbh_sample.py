@@ -148,7 +148,13 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
     # first draw number of events: a Poisson process, with rate 
     # given by the number of events per year per Gpc^3, the 
     # duration of observations and the volume
-    vol = volume(d_max, d_min, h_0, q_0)
+    if sample_z:
+        z_min = d2z(d_min, h_0, q_0)
+        z_max = d2z(d_max, h_0, q_0)
+        vol = volume_z(z_max, z_min, h_0, q_0, \
+                       redshift_rate=redshift_rate)
+    else:
+        vol = volume(d_max, d_min, h_0, q_0)
     n_per_sec = rate * vol / 365.0 / 24.0 / 3600.0 * f_online
     n_exp = n_per_sec * (t_max - t_min)
     n_inj = npr.poisson(n_exp)
@@ -167,8 +173,6 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
     # draw distances via an interpolated CDF
     if sample_z:
 
-        z_min = d2z(d_min, h_0, q_0)
-        z_max = d2z(d_max, h_0, q_0)
         z_grid = np.linspace(z_min, z_max, 10000)
         p_z_grid = volume_z(z_grid, z_min, h_0, q_0, \
                             redshift_rate=redshift_rate) / \
@@ -254,39 +258,6 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
     return 1.0 / n_per_sec, data
 
 
-# QUESTIONS
-# 1 - DONE: AW's 50% duty cycle
-# 2 - DONE: _ns times (nanoseconds? but i don't know what they are) are 
-#     they the noninteger part of the start time?
-# 3 - DONE: LAL's volume seems to be increasing like there's no q_0.
-#     it doesn't use it. just uses volume...
-# 4 - SNRs: matched filter (signal vs data) or optimal filter (sig vs sig).
-#     and take abs of MF? or real part?
-#     matched filter, take magnitude
-# 5 - what SNR threshold?
-#      + 1709.08079: matched filter SNR in single det of >8
-#      + PPD PRL: all dets >6, combined >12
-#      + Chen Nature: combined >12
-# 6 - what mass / spin distributions should we use?
-#      + uniform spins seem standard
-#      + mass gap 2-5 M_sol, but not for some mergers!
-#      + broaden the Gaussian, at the very least. 1901.03345 says initial 
-#        mass dist of individual BHs goes as M^-2.35, which for their BBH
-#        simulations results in significant numbers of binaries with low 
-#        total mass (just greater than their min of 10 M_sol). the peak 
-#        total mass is 13-20, meaning individual masses peaked at 6.5-10, 
-#        dropping to ~50% of peak at 11 M_sol. so broaden Gaussian, at least. 
-#        1811.12940 says could be even wider (see fig 1). could even go 
-#        uniform from 5-40.
-# 7 - DONE: should include 1/(1+z) in dv/dd to account for time dilation. 
-#     could just sample in redshift and convert...
-
-# TO CONFIRM
-# 1 - rate. latest 90% UL is 610/Gpc^3/yr (1811.12907)
-# 2 - BH mass distribution
-# 3 - SNR threshold
-# 4 - spin distributions (consistent with PPD PRL)
-
 # plot settings
 lw = 1.5
 mp.rc('font', family='serif', size=10)
@@ -295,19 +266,20 @@ mp.rcParams['axes.linewidth'] = lw
 mp.rcParams['lines.linewidth'] = lw
 
 # settings
-min_network = True
+min_network = False
 if min_network:
     ifo_list = ['H1', 'L1', 'V1', 'K1-']
     t_obs = 3.0 # years
+    d_max = 1500.0 # Mpc
 else:
     ifo_list = ['H1+', 'L1+', 'V1+', 'K1+', 'A1']
     t_obs = 5.0 # years
+    d_max = 2045.0 # Mpc # I used 2250.0!
 c = 2.998e5 # km / s
 h_0 = 67.36 # km / s / Mpc
 q_0 = 0.5 * 0.3153 - 0.6847
 rate = 6.1e-7 # 2.0e-6 # events / year / Mpc^3
 d_min = 0.0
-d_max = 1500.0 # 1200.0 # Mpc
 t_start = 1325030418
 t_stop = t_start + t_obs * 3600 * 24 * 365
 f_online = 0.5
@@ -322,7 +294,7 @@ sample_z = True
 redshift_rate = True
 uniform_bh_masses = True
 low_metals = False
-broad_bh_spins = False
+broad_bh_spins = True
 
 # BH mass and spin dists
 if uniform_bh_masses:
@@ -738,12 +710,12 @@ n_det = np.sum(det)
 
 # save clean data file and plot SNRs vs distance and inclination
 fig_snr, axes_snr = mp.subplots(1, 2, figsize=(10, 5), sharey=True)
-axes_snr[0].plot(data['distance'], snrs, '.')
+axes_snr[0].semilogy(data['distance'], snrs, '.')
 axes_snr[0].set_xlabel(r'$d$')
 axes_snr[0].set_ylabel(r'$\rho$')
 axes_snr[0].grid(False)
-axes_snr[0].axhline(12.0, color='C1', ls='--')
-axes_snr[1].plot(data['inclination'], snrs, '.')
+axes_snr[0].axhline(snr_thresh, color='C1', ls='--')
+axes_snr[1].semilogy(data['inclination'], snrs, '.')
 axes_snr[1].set_xlabel(r'$\iota$')
 axes_snr[1].grid(False)
 axes_snr[1].axhline(snr_thresh, color='C1', ls='--')
