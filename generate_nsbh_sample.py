@@ -18,6 +18,8 @@ import astropy.units as au
 import ns_eos_aw as nseos
 import math
 import pickle
+import getdist as gd
+import getdist.plots as gdp
 
 def dd2_lambda_from_mass(m):
     return 1.60491e6 - 23020.6 * m**-5 + 194720. * m**-4 - 658596. * m**-3 \
@@ -139,7 +141,8 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
                     q_0, m_min_1, m_max_1, m_mean_1, m_std_1, m_min_2, \
                     m_max_2, m_mean_2, m_std_2, a_min_1, a_max_1, \
                     a_min_2, a_max_2, seed=None, sample_z=False, \
-                    redshift_rate=False, uniform_bh_masses=False):
+                    redshift_rate=False, uniform_bh_masses=False, \
+                    fixed_count=None):
 
     # constrained realisation if desired
     if seed is not None:
@@ -148,16 +151,23 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
     # first draw number of events: a Poisson process, with rate 
     # given by the number of events per year per Gpc^3, the 
     # duration of observations and the volume
-    if sample_z:
-        z_min = d2z(d_min, h_0, q_0)
-        z_max = d2z(d_max, h_0, q_0)
-        vol = volume_z(z_max, z_min, h_0, q_0, \
-                       redshift_rate=redshift_rate)
+    if fixed_count is None:
+        if sample_z:
+            z_min = d2z(d_min, h_0, q_0)
+            z_max = d2z(d_max, h_0, q_0)
+            vol = volume_z(z_max, z_min, h_0, q_0, \
+                           redshift_rate=redshift_rate)
+        else:
+            vol = volume(d_max, d_min, h_0, q_0)
+        n_per_sec = rate * vol / 365.0 / 24.0 / 3600.0 * f_online
+        n_exp = n_per_sec * (t_max - t_min)
+        n_inj = npr.poisson(n_exp)
     else:
-        vol = volume(d_max, d_min, h_0, q_0)
-    n_per_sec = rate * vol / 365.0 / 24.0 / 3600.0 * f_online
-    n_exp = n_per_sec * (t_max - t_min)
-    n_inj = npr.poisson(n_exp)
+        if sample_z:
+            z_min = d2z(d_min, h_0, q_0)
+            z_max = d2z(d_max, h_0, q_0)
+        n_inj = fixed_count
+        n_per_sec = fixed_count / (t_max - t_min)
     
     # draw merger times consistent with the expected rate. add a 
     # check to ensure that the latest merger time is within the 
@@ -257,6 +267,21 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
 
     return 1.0 / n_per_sec, data
 
+def comp_masses_to_chirp_q(m_1, m_2):
+
+    m_c = (m_1 * m_2) ** 0.6 / (m_1 + m_2) ** 0.2
+    q_inv = m_2 / m_1
+
+    return m_c, q_inv
+
+def chirp_q_to_comp_masses(m_c, q_inv):
+
+    q = 1.0 / q_inv
+    m_2 = (1 + q) ** 0.2 / q ** 0.6 * m_c
+    m_1 = q * m_2
+
+    return m_1, m_2
+
 
 # plot settings
 lw = 1.5
@@ -295,6 +320,7 @@ redshift_rate = True
 uniform_bh_masses = True
 low_metals = False
 broad_bh_spins = True
+cf_bilby = True
 
 # BH mass and spin dists
 if uniform_bh_masses:
@@ -425,18 +451,135 @@ if use_lal:
 
 else:
 
-    # simulate using my code
-    pop = nsbh_population(rate, t_start, t_stop, f_online, d_min, \
-                          d_max, h_0, q_0, m_min_bh, m_max_bh, \
-                          m_mean_bh, m_std_bh, m_min_ns, m_max_ns, \
-                          m_mean_ns, m_std_ns, spin_min_bh, \
-                          spin_max_bh, spin_min_ns, spin_max_ns, \
-                          seed=seed, sample_z=sample_z, \
-                          redshift_rate=redshift_rate, \
-                          uniform_bh_masses=uniform_bh_masses)
-    s_per_event = pop[0]
-    data = pop[1]
-    n_inj = data.shape[0]
+    # option to compare my priors to bilby's
+    if not cf_bilby:
+
+        # simulate using my code
+        pop = nsbh_population(rate, t_start, t_stop, f_online, d_min, \
+                              d_max, h_0, q_0, m_min_bh, m_max_bh, \
+                              m_mean_bh, m_std_bh, m_min_ns, m_max_ns, \
+                              m_mean_ns, m_std_ns, spin_min_bh, \
+                              spin_max_bh, spin_min_ns, spin_max_ns, \
+                              seed=seed, sample_z=sample_z, \
+                              redshift_rate=redshift_rate, \
+                              uniform_bh_masses=uniform_bh_masses)
+        s_per_event = pop[0]
+        data = pop[1]
+        n_inj = data.shape[0]
+
+    else:
+
+        # simulate using my code
+        pop = nsbh_population(rate, t_start, t_stop, f_online, d_min, \
+                              d_max, h_0, q_0, m_min_bh, m_max_bh, \
+                              m_mean_bh, m_std_bh, m_min_ns, m_max_ns, \
+                              m_mean_ns, m_std_ns, spin_min_bh, \
+                              spin_max_bh, spin_min_ns, spin_max_ns, \
+                              seed=seed, sample_z=sample_z, \
+                              redshift_rate=redshift_rate, \
+                              uniform_bh_masses=uniform_bh_masses, \
+                              fixed_count=50000)
+        data = pop[1]
+        n_inj = data.shape[0]
+
+        # calculate limits on bilby priors
+        if sample_z:
+            d_min = z2d(d2z(d_min, h_0, q_0), h_0, q_0)
+            d_max = z2d(d2z(d_max, h_0, q_0), h_0, q_0)
+        m_c_min, _ = comp_masses_to_chirp_q(m_min_bh, m_min_ns)
+        m_c_max, _ = comp_masses_to_chirp_q(m_max_bh, m_max_ns)
+        _, q_inv_min = comp_masses_to_chirp_q(m_max_bh, m_min_ns)
+        _, q_inv_max = comp_masses_to_chirp_q(m_min_bh, m_max_ns)
+
+        # sample from bilby NSBH prior by modifying default prior for BNS
+        priors = bilby.gw.prior.BNSPriorDict(aligned_spin=False)
+        priors.pop('mass_1')
+        priors.pop('mass_2')
+        priors['chirp_mass'] = bilby.prior.Uniform(name='chirp_mass', \
+                                                   unit='$M_{\\odot}$', \
+                                                   latex_label='$M$', \
+                                                   minimum=m_c_min, \
+                                                   maximum=m_c_max)
+        priors['mass_ratio'] = bilby.prior.Uniform(name='mass_ratio', \
+                                                   latex_label='$q$', \
+                                                   minimum=q_inv_min, \
+                                                   maximum=q_inv_max)
+        priors['geocent_time'] = \
+            bilby.core.prior.Uniform(minimum=-0.1, maximum=0.0, \
+                                     name='geocent_time', \
+                                     latex_label='$t_c$', \
+                                     unit='$s$')
+        priors['lambda_2'] = bilby.core.prior.Uniform(name='lambda_2', \
+                                                      minimum=0.0, \
+                                                      maximum=4000.0, \
+                                                      latex_label=r'$\Lambda_2$', \
+                                                      boundary=None)
+        priors.pop('a_1')
+        priors['a_1'] = \
+            bilby.core.prior.Uniform(name='a_1', minimum=spin_min_bh, \
+                                     maximum=spin_max_bh, \
+                                     boundary='reflective')
+        priors.pop('luminosity_distance')
+        priors['luminosity_distance'] = \
+            bilby.gw.prior.UniformSourceFrame(name='luminosity_distance', \
+                                              minimum=d_min, maximum=d_max, \
+                                              unit='Mpc', boundary=None)
+        priors['lambda_1'] = 0.0
+        bilby_samples = priors.sample(50000)
+
+        # convert samples as required
+        smf_m_c, smf_q_inv = \
+            comp_masses_to_chirp_q(data['mass1'], data['mass2'])
+        smf_samples = np.array([data['distance'], \
+                                data['mass1'], \
+                                data['mass2'], \
+                                smf_m_c, smf_q_inv]).T
+        bilby_m_bh, bilby_m_ns = \
+            chirp_q_to_comp_masses(bilby_samples['chirp_mass'], \
+                                   bilby_samples['mass_ratio'])
+        bgw_samples = np.array([bilby_samples['luminosity_distance'], \
+                                bilby_m_bh, \
+                                bilby_m_ns, \
+                                bilby_samples['chirp_mass'], \
+                                bilby_samples['mass_ratio']]).T
+        _, m_min_ns_bgw = chirp_q_to_comp_masses(m_c_min, q_inv_min)
+        _, m_max_ns_bgw = chirp_q_to_comp_masses(m_c_max, q_inv_max)
+        m_min_bh_bgw, _ = chirp_q_to_comp_masses(m_c_min, q_inv_max)
+        m_max_bh_bgw, _ = chirp_q_to_comp_masses(m_c_max, q_inv_min)
+
+        # plot!
+        smf_gds = gd.MCSamples(samples=smf_samples, \
+                               names=['d', 'm_1', 'm_2', 'm_c', 'q_inv'], \
+                               labels=[r'D_L', 'm_1', 'm_2', 'M_c', '1/q'], \
+                               ranges={'d':(d_min, d_max), \
+                                       'm_1':(m_min_bh, m_max_bh), \
+                                       'm_2':(m_min_ns, m_max_ns), \
+                                       'm_c':(m_c_min, m_c_max), \
+                                       'q_inv':(q_inv_min, q_inv_max)}, \
+                               label='SMF Priors')
+        bgw_gds = gd.MCSamples(samples=bgw_samples, \
+                               names=['d', 'm_1', 'm_2', 'm_c', 'q_inv'], \
+                               labels=[r'D_L', 'm_1', 'm_2', 'M_c', '1/q'], \
+                               ranges={'d':(d_min, d_max), \
+                                       'm_1':(m_min_bh_bgw, m_max_bh_bgw), \
+                                       'm_2':(m_min_ns_bgw, m_max_ns_bgw), \
+                                       'm_c':(m_c_min, m_c_max), \
+                                       'q_inv':(q_inv_min, q_inv_max)}, \
+                               label='Bilby Priors')
+        g = gdp.get_subplot_plotter()
+        g.settings.lw_contour = lw
+        cm = mpcm.get_cmap('plasma')
+        g.triangle_plot([bgw_gds, smf_gds], filled=True, \
+                        line_args=[{'lw':lw, 'color':'C0'}, \
+                                   {'lw':lw, 'color':'C1'}], \
+                        colors=['C0', 'C1'])
+        n_pars = smf_samples.shape[1]
+        for i in range(n_pars):
+            for j in range(0, i + 1):
+                g.subplots[i, j].grid(False)
+        plot_file = outdir + '/' + label + '_bilby_prior_comp.pdf'
+        g.export(plot_file)
+        exit()
 
 # calculate tidal deformabilities for all NSs
 lambdas = np.zeros(n_inj)
