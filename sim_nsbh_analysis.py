@@ -64,12 +64,17 @@ def convert_azimuth(azi):
 
     return new
 
+def comp_masses_to_chirp_q(m_1, m_2):
+
+    m_c = (m_1 * m_2) ** 0.6 / (m_1 + m_2) ** 0.2
+    q_inv = m_2 / m_1
+
+    return m_c, q_inv
+
 
 # @TODO
 # 7 - check out psi definition. prior is 0->pi but injection is 4.03...
-# 10 - modify chirp mass and 1/q priors to reflect new mass BH prior?
-# 14 - check bilby.gw.prior.UniformSourceFrame. redshifted rate? h_0/q_0?
-#      likely it's not going to be consistent
+# 17 - DONE: reduce maximum prior distance
 
 # NB: broadening mass prior reduces mergers with non-zero remnant
 
@@ -80,17 +85,49 @@ duration = 32.0 # 8.0
 sampling_frequency = 2048.
 minimum_frequency = 20.0 # 40.0
 reference_frequency = 14.0 # 50.0
-ifo_list = ['H1', 'L1', 'V1', 'K1-'] # ['H1', 'L1', 'V1']
-ifo_list = ['H1+', 'L1+', 'V1+', 'K1+', 'A1'] # ['H1', 'L1', 'V1']
+min_network = False
+if min_network:
+    ifo_list = ['H1', 'L1', 'V1', 'K1-']
+else:
+    ifo_list = ['H1+', 'L1+', 'V1+', 'K1+', 'A1']
 n_live = 1000
 zero_spins = False
 remnants_only = True
+min_remnant_mass = 0.01
 tight_loc = False
 fixed_ang = True
 sample_z = True
 redshift_rate = True
-broad_bh_masses = True
-lam_det_test = True
+uniform_bh_masses = True
+uniform_ns_masses = True
+low_metals = True
+broad_bh_spins = True
+lam_det_test = False
+
+# BH mass and spin prior limits
+if uniform_bh_masses:
+    m_min_bh = 2.5
+    if low_metals:
+        m_max_bh = 40.0
+    else:
+        m_max_bh = 12.0
+else:
+    m_min_bh = 5.0
+    m_max_bh = 20.0
+spin_min_bh = 0.0
+if broad_bh_spins:
+    spin_max_bh = 0.99
+else:
+    spin_max_bh = 0.5
+
+# NS mass and spin prior limits
+m_min_ns = 1.0
+if uniform_ns_masses:
+    m_max_ns = 2.42
+else:
+    m_max_ns = 2.0
+spin_min_ns = 0.0
+spin_max_ns = 0.05
 
 # settings for tight localisation: known angular position, distance 
 # constrained to be approximately Gaussian by redshift, peculiar 
@@ -134,8 +171,12 @@ if sample_z:
     label_str += '_dndz'
     if redshift_rate:
         label_str += '_rr'
-if broad_bh_masses:
-    label_str += '_bbhmp'
+if uniform_bh_masses:
+    label_str += '_ubhmp_{:.1f}_{:.1f}'.format(m_min_bh, m_max_bh)
+if uniform_ns_masses:
+    label_str += '_unsmp_{:.1f}_{:.1f}'.format(m_min_ns, m_max_ns)
+if broad_bh_spins:
+    label_str += '_bbhsp'
 base_label = label_str.format(duration, minimum_frequency, \
                               reference_frequency)
 if lam_det_test:
@@ -149,7 +190,7 @@ raw_pars = np.genfromtxt('data/' + par_file, \
                          encoding=None)
 det = raw_pars['snr'] >= snr_thresh
 if remnants_only:
-    det = np.logical_and(det, raw_pars['remnant_mass'] > 0.0)
+    det = np.logical_and(det, raw_pars['remnant_mass'] > min_remnant_mass)
 raw_pars = raw_pars[det]
 n_inj = np.sum(det)
 job_list = allocate_jobs(n_inj, n_procs, rank)
@@ -324,13 +365,30 @@ for j in range(len(job_list)):
     priors = bilby.gw.prior.BNSPriorDict(aligned_spin=False)
     priors.pop('mass_1')
     priors.pop('mass_2')
-    priors['chirp_mass'] = bilby.prior.Uniform(name='chirp_mass', \
-                                               unit='$M_{\\odot}$', \
-                                               latex_label='$M$', \
-                                               minimum=1.8, maximum=7.2)
-    priors['mass_ratio'] = bilby.prior.Uniform(name='mass_ratio', \
-                                               latex_label='$q$', \
-                                               minimum=0.02, maximum=0.4)
+    if uniform_bh_masses and uniform_ns_masses:
+        priors.pop('mass_ratio')
+        priors['mass_1'] = \
+            bilby.prior.Uniform(name='mass_1', minimum=m_min_bh, \
+                                maximum=m_max_bh, unit='$M_{\\odot}$', \
+                                boundary=None)
+        priors['mass_2'] = \
+            bilby.prior.Uniform(name='mass_2', minimum=m_min_ns, \
+                                maximum=m_max_ns, unit='$M_{\\odot}$', \
+                                boundary=None)
+    else:
+        m_c_min, _ = comp_masses_to_chirp_q(m_min_bh, m_min_ns)
+        m_c_max, _ = comp_masses_to_chirp_q(m_max_bh, m_max_ns)
+        _, q_inv_min = comp_masses_to_chirp_q(m_max_bh, m_min_ns)
+        _, q_inv_max = comp_masses_to_chirp_q(m_min_bh, m_max_ns)
+        priors['chirp_mass'] = bilby.prior.Uniform(name='chirp_mass', \
+                                                   unit='$M_{\\odot}$', \
+                                                   latex_label='$M$', \
+                                                   minimum=m_c_min, \
+                                                   maximum=m_c_max)
+        priors['mass_ratio'] = bilby.prior.Uniform(name='mass_ratio', \
+                                                   latex_label='$q$', \
+                                                   minimum=q_inv_min, \
+                                                   maximum=q_inv_max)
     priors['geocent_time'] = \
         bilby.core.prior.Uniform(minimum=injection_parameters['geocent_time'] - 0.1, \
                                  maximum=injection_parameters['geocent_time'] + 0.1, \
@@ -338,7 +396,7 @@ for j in range(len(job_list)):
                                  unit='$s$')
     priors['lambda_2'] = bilby.core.prior.Uniform(name='lambda_2', \
                                                   minimum=0.0, \
-                                                  maximum=4000.0, \
+                                                  maximum=4500.0, \
                                                   latex_label=r'$\Lambda_2$', \
                                                   boundary=None)
     to_fix = ['lambda_1']
@@ -347,13 +405,14 @@ for j in range(len(job_list)):
     else:
         priors.pop('a_1')
         priors['a_1'] = \
-            bilby.core.prior.Uniform(name='a_1', minimum=0, maximum=0.8, \
+            bilby.core.prior.Uniform(name='a_1', minimum=spin_min_bh, \
+                                     maximum=spin_max_bh, \
                                      boundary='reflective')
     if tight_loc:
         to_fix += ['ra', 'dec']
         priors.pop('luminosity_distance')
         priors['luminosity_distance'] = \
-            bilby.prior.TruncatedGaussian(d_obs, sig_d_obs, 10.0, 5000.0, \
+            bilby.prior.TruncatedGaussian(d_obs, sig_d_obs, 10.0, 2500.0, \
                                           name='luminosity_distance', \
                                           unit='Mpc', latex_label='$D_L$')
     elif fixed_ang:
@@ -361,7 +420,7 @@ for j in range(len(job_list)):
         priors.pop('luminosity_distance')
         priors['luminosity_distance'] = \
             bilby.gw.prior.UniformSourceFrame(name='luminosity_distance', \
-                                              minimum=10.0, maximum=5000.0, \
+                                              minimum=10.0, maximum=2500.0, \
                                               unit='Mpc', boundary=None)
     for key in to_fix:
         priors[key] = injection_parameters[key]
