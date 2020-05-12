@@ -142,7 +142,7 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
                     m_max_2, m_mean_2, m_std_2, a_min_1, a_max_1, \
                     a_min_2, a_max_2, seed=None, sample_z=False, \
                     redshift_rate=False, uniform_bh_masses=False, \
-                    fixed_count=None):
+                    uniform_ns_masses=False, fixed_count=None):
 
     # constrained realisation if desired
     if seed is not None:
@@ -213,10 +213,13 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
                             (m_max_1 - m_mean_1) / m_std_1, \
                             loc=m_mean_1, scale=m_std_1)
         m_1s = dist.rvs(n_inj)
-    dist = ss.truncnorm((m_min_2 - m_mean_2) / m_std_2, \
-                        (m_max_2 - m_mean_2) / m_std_2, \
-                        loc=m_mean_2, scale=m_std_2)
-    m_2s = dist.rvs(n_inj)
+    if uniform_ns_masses:
+        m_2s = npr.uniform(m_min_2, m_max_2, size=n_inj)
+    else:
+        dist = ss.truncnorm((m_min_2 - m_mean_2) / m_std_2, \
+                            (m_max_2 - m_mean_2) / m_std_2, \
+                            loc=m_mean_2, scale=m_std_2)
+        m_2s = dist.rvs(n_inj)
 
     # now draw spins: isotropic in direction, uniform in magnitude
     spin_amps = npr.uniform(a_min_1, a_max_1, size=n_inj)
@@ -318,9 +321,10 @@ use_lal = False
 sample_z = True
 redshift_rate = True
 uniform_bh_masses = True
+uniform_ns_masses = True
 low_metals = False
-broad_bh_spins = True
-cf_bilby = True
+broad_bh_spins = False
+cf_bilby = False
 
 # BH mass and spin dists
 if uniform_bh_masses:
@@ -342,7 +346,10 @@ else:
 
 # NS mass and spin dists
 m_min_ns = 1.0
-m_max_ns = 2.0
+if uniform_ns_masses:
+    m_max_ns = 2.42
+else:
+    m_max_ns = 2.0
 m_mean_ns = 1.33
 m_std_ns = 0.15
 spin_min_ns = 0.0
@@ -369,6 +376,8 @@ if sample_z:
         label_str += '_rr'
 if uniform_bh_masses:
     label_str += '_ubhmp_{:.1f}_{:.1f}'.format(m_min_bh, m_max_bh)
+if uniform_ns_masses:
+    label_str += '_unsmp_{:.1f}_{:.1f}'.format(m_min_ns, m_max_ns)
 if broad_bh_spins:
     label_str += '_bbhsp'
 label = label_str.format(duration, minimum_frequency, \
@@ -462,7 +471,8 @@ else:
                               spin_max_bh, spin_min_ns, spin_max_ns, \
                               seed=seed, sample_z=sample_z, \
                               redshift_rate=redshift_rate, \
-                              uniform_bh_masses=uniform_bh_masses)
+                              uniform_bh_masses=uniform_bh_masses, \
+                              uniform_ns_masses=uniform_ns_masses)
         s_per_event = pop[0]
         data = pop[1]
         n_inj = data.shape[0]
@@ -478,6 +488,7 @@ else:
                               seed=seed, sample_z=sample_z, \
                               redshift_rate=redshift_rate, \
                               uniform_bh_masses=uniform_bh_masses, \
+                              uniform_ns_masses=uniform_ns_masses, \
                               fixed_count=50000)
         data = pop[1]
         n_inj = data.shape[0]
@@ -672,10 +683,14 @@ else:
     dndm = np.exp(-0.5 * ((m_grid - m_mean_bh) / m_std_bh) ** 2)
     dndm = dndm / np.sum(dndm) / norm
     axes[1, 2].plot(m_grid, dndm)
-m_grid = np.linspace(m_min_ns, m_mean_ns + 4.0 * m_std_ns, 1000)
-dndm = np.exp(-0.5 * ((m_grid - m_mean_ns) / m_std_ns) ** 2)
-dndm = dndm / np.sum(dndm) / norm
-axes[2, 0].plot(m_grid, dndm)
+if uniform_ns_masses:
+    axes[2, 0].axvline(m_min_ns, color='C1')
+    axes[2, 0].axvline(m_max_ns, color='C1')
+else:
+    m_grid = np.linspace(m_min_ns, m_mean_ns + 4.0 * m_std_ns, 1000)
+    dndm = np.exp(-0.5 * ((m_grid - m_mean_ns) / m_std_ns) ** 2)
+    dndm = dndm / np.sum(dndm) / norm
+    axes[2, 0].plot(m_grid, dndm)
 axes[2, 1].axvline(spin_min_bh, color='C1')
 axes[2, 1].axvline(spin_max_bh, color='C1')
 axes[2, 2].axvline(spin_min_ns, color='C1')
@@ -850,6 +865,8 @@ for j in range(n_inj):
 # define detected sample
 det = snrs > snr_thresh
 n_det = np.sum(det)
+det_rem = np.logical_and(has_remnant, det)
+n_det_rem = np.sum(det_rem)
 
 # save clean data file and plot SNRs vs distance and inclination
 fig_snr, axes_snr = mp.subplots(1, 2, figsize=(10, 5), sharey=True)
@@ -883,7 +900,7 @@ axes[2, 2].hist(np.sqrt(data['spin2x'][det] ** 2 + \
                         data['spin2y'][det] ** 2 + \
                         data['spin2z'][det] ** 2))
 axes[3, 0].hist(data['mass1'][det] / data['mass2'][det])
-axes[3, 1].hist(remnant_masses[np.logical_and(has_remnant, det)])
+axes[3, 1].hist(remnant_masses[det_rem])
 axes[3, 2].hist(lambdas[det])
 axes[0, 0].set_xlabel(r'$\Delta t$')
 axes[0, 1].set_xlabel(r'$d$')
@@ -930,11 +947,15 @@ else:
     dndm = np.exp(-0.5 * ((m_grid - m_mean_bh) / m_std_bh) ** 2)
     dndm = dndm / np.sum(dndm) / norm
     axes[1, 2].plot(m_grid, dndm)
-m_grid = np.linspace(m_min_ns, m_mean_ns + 4.0 * m_std_ns, 1000)
-#norm = m_grid[1] - m_grid[0]
-dndm = np.exp(-0.5 * ((m_grid - m_mean_ns) / m_std_ns) ** 2)
-dndm = dndm / np.sum(dndm) / norm
-axes[2, 0].plot(m_grid, dndm)
+if uniform_ns_masses:
+    axes[2, 0].axvline(m_min_ns, color='C1')
+    axes[2, 0].axvline(m_max_ns, color='C1')
+else:
+    m_grid = np.linspace(m_min_ns, m_mean_ns + 4.0 * m_std_ns, 1000)
+    #norm = m_grid[1] - m_grid[0]
+    dndm = np.exp(-0.5 * ((m_grid - m_mean_ns) / m_std_ns) ** 2)
+    dndm = dndm / np.sum(dndm) / norm
+    axes[2, 0].plot(m_grid, dndm)
 axes[2, 1].axvline(spin_min_bh, color='C1')
 axes[2, 1].axvline(spin_max_bh, color='C1')
 axes[2, 2].axvline(spin_min_ns, color='C1')
@@ -952,16 +973,23 @@ mp.close(fig)
 
 # also plot distances vs mass ratios for detected events
 fig_dq, axes_dq = mp.subplots(2, 2)
-axes_dq[0, 0].hist(data['distance'][det])
+axes_dq[0, 0].hist(data['distance'][det], \
+                   density=True)
+axes_dq[0, 0].hist(data['distance'][det_rem], \
+                   density=True, color='C1', alpha=0.7)
 axes_dq[0, 0].get_xaxis().set_visible(False)
 axes_dq[0, 0].get_yaxis().set_visible(False)
 axes_dq[0, 0].set_title(r'$d_L\,{\rm [Mpc]}$')
 axes_dq[0, 0].grid(False)
-axes_dq[1, 1].hist(data['mass1'][det] / data['mass2'][det])
+axes_dq[1, 1].hist(data['mass1'][det] / data['mass2'][det], \
+                   density=True, label='no remnant')
+axes_dq[1, 1].hist(data['mass1'][det_rem] / data['mass2'][det_rem], \
+                   density=True, color='C1', alpha=0.7, label='remnant')
 axes_dq[1, 1].get_yaxis().set_visible(False)
 axes_dq[1, 1].set_xlabel(r'$m_{BH} / m_{NS}$')
 axes_dq[1, 1].set_title(r'$m_{BH} / m_{NS}$')
 axes_dq[1, 1].grid(False)
+axes_dq[1, 1].legend(loc='upper right')
 #axes_dq[1, 0].hist2d(data['distance'], data['mass1'] / data['mass2'], \
 #                     bins=10)
 axes_dq[1, 0].set_xlabel(r'$d_L\,{\rm [Mpc]}$')
@@ -969,6 +997,9 @@ axes_dq[1, 0].set_ylabel(r'$m_{BH} / m_{NS}$')
 axes_dq[1, 0].plot(data['distance'][det], \
                    data['mass1'][det] / data['mass2'][det], \
                    '+', color='C0', alpha=0.2)
+axes_dq[1, 0].plot(data['distance'][det_rem], \
+                   data['mass1'][det_rem] / data['mass2'][det_rem], \
+                   '+', color='C1', alpha=0.7)
 axes_dq[1, 0].set_xlim(axes_dq[0, 0].get_xlim())
 axes_dq[1, 0].set_ylim(axes_dq[1, 1].get_xlim())
 axes_dq[1, 0].grid(False)
@@ -1001,7 +1032,6 @@ with open('data/' + label + '_rng_states.bin', 'wb') as f:
     pickle.dump(rng_states, f)
 
 # final report
-n_det_rem = np.sum(np.logical_and(has_remnant, det))
 print(n_inj, 'mergers simulated')
 print(n_det, 'mergers detected')
 print(n_rem, 'mergers with non-zero remnant mass')
