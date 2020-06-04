@@ -142,7 +142,8 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
                     m_max_2, m_mean_2, m_std_2, a_min_1, a_max_1, \
                     a_min_2, a_max_2, seed=None, sample_z=False, \
                     redshift_rate=False, uniform_bh_masses=False, \
-                    uniform_ns_masses=False, fixed_count=None):
+                    uniform_ns_masses=False, fixed_count=None, \
+                    aligned_spins=False):
 
     # constrained realisation if desired
     if seed is not None:
@@ -228,12 +229,18 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
     a_1_xs = spin_amps * np.sin(spin_colats) * np.cos(spin_longs)
     a_1_ys = spin_amps * np.sin(spin_colats) * np.sin(spin_longs)
     a_1_zs = spin_amps * np.cos(spin_colats)
+    if aligned_spins:
+        a_1_xs = 0.0
+        a_1_ys = 0.0
     spin_amps = npr.uniform(a_min_2, a_max_2, size=n_inj)
     spin_colats = np.arccos(-npr.uniform(-1.0, 1.0, size=n_inj))
     spin_longs = npr.uniform(0.0, 2.0 * np.pi, size=n_inj)
     a_2_xs = spin_amps * np.sin(spin_colats) * np.cos(spin_longs)
     a_2_ys = spin_amps * np.sin(spin_colats) * np.sin(spin_longs)
     a_2_zs = spin_amps * np.cos(spin_colats)
+    if aligned_spins:
+        a_2_xs = 0.0
+        a_2_ys = 0.0
 
     # finally draw isotropic coa_phase and polarization angles
     coa_phases = npr.uniform(0.0, 2.0 * np.pi, size=n_inj)
@@ -322,8 +329,15 @@ sample_z = True
 redshift_rate = True
 uniform_bh_masses = True
 uniform_ns_masses = True
-low_metals = False
-broad_bh_spins = False
+low_metals = True
+broad_bh_spins = True
+seobnr_waveform = True
+if seobnr_waveform:
+    waveform_approximant = 'SEOBNRv4_ROM_NRTidalv2_NSBH'
+    aligned_spins = True
+else:
+    waveform_approximant = 'IMRPhenomPv2_NRTidal'
+    aligned_spins = False
 cf_bilby = False
 
 # BH mass and spin dists
@@ -380,6 +394,10 @@ if uniform_ns_masses:
     label_str += '_unsmp_{:.1f}_{:.1f}'.format(m_min_ns, m_max_ns)
 if broad_bh_spins:
     label_str += '_bbhsp'
+if seobnr_waveform:
+    label_str += '_seobnr'
+if aligned_spins:
+    label_str += '_aligned'
 label = label_str.format(duration, minimum_frequency, \
                          reference_frequency)
 
@@ -398,7 +416,7 @@ if use_lal:
               '--time-step {:.1f} '.format(s_per_event) + \
               '--gps-start-time {:d} '.format(t_start) + \
               '--gps-end-time {:d} '.format(t_stop) + \
-              '--l-distr random --waveform IMRPhenomPv2_NRTidal ' + \
+              '--l-distr random --waveform ' + waveform_approximant + ' ' + \
               '--i-distr uniform --max-inc 90 --d-distr volume ' + \
               '--min-distance 1 --max-distance {:.1f} '.format(d_max * \
                                                                1000.0) + \
@@ -472,7 +490,8 @@ else:
                               seed=seed, sample_z=sample_z, \
                               redshift_rate=redshift_rate, \
                               uniform_bh_masses=uniform_bh_masses, \
-                              uniform_ns_masses=uniform_ns_masses)
+                              uniform_ns_masses=uniform_ns_masses, \
+                              aligned_spins=aligned_spins)
         s_per_event = pop[0]
         data = pop[1]
         n_inj = data.shape[0]
@@ -489,7 +508,8 @@ else:
                               redshift_rate=redshift_rate, \
                               uniform_bh_masses=uniform_bh_masses, \
                               uniform_ns_masses=uniform_ns_masses, \
-                              fixed_count=50000)
+                              fixed_count=50000, \
+                              aligned_spins=aligned_spins)
         data = pop[1]
         n_inj = data.shape[0]
 
@@ -816,7 +836,7 @@ for j in range(n_inj):
                                 time_jitter=0.0)
 
     # Fixed arguments passed into the source model
-    waveform_arguments = dict(waveform_approximant='IMRPhenomPv2_NRTidal', \
+    waveform_arguments = dict(waveform_approximant=waveform_approximant, \
                               reference_frequency=reference_frequency, \
                               minimum_frequency=minimum_frequency)
 

@@ -102,6 +102,13 @@ uniform_bh_masses = True
 uniform_ns_masses = True
 low_metals = True
 broad_bh_spins = True
+seobnr_waveform = True
+if seobnr_waveform:
+    waveform_approximant = 'SEOBNRv4_ROM_NRTidalv2_NSBH'
+    aligned_spins = True
+else:
+    waveform_approximant = 'IMRPhenomPv2_NRTidal'
+    aligned_spins = False
 lam_det_test = False
 
 # BH mass and spin prior limits
@@ -177,6 +184,10 @@ if uniform_ns_masses:
     label_str += '_unsmp_{:.1f}_{:.1f}'.format(m_min_ns, m_max_ns)
 if broad_bh_spins:
     label_str += '_bbhsp'
+if seobnr_waveform:
+    label_str += '_seobnr'
+if aligned_spins:
+    label_str += '_aligned'
 base_label = label_str.format(duration, minimum_frequency, \
                               reference_frequency)
 if lam_det_test:
@@ -322,7 +333,7 @@ for j in range(len(job_list)):
                                 time_jitter=0.0)
 
     # Fixed arguments passed into the source model
-    waveform_arguments = dict(waveform_approximant='IMRPhenomPv2_NRTidal', \
+    waveform_arguments = dict(waveform_approximant=waveform_approximant, \
                               reference_frequency=reference_frequency, \
                               minimum_frequency=minimum_frequency)
 
@@ -362,7 +373,7 @@ for j in range(len(job_list)):
     # We're going to sample in chirp_mass, mass_ratio and lambda_2 for now.
     # BNS have aligned spins by default, so allow precessing spins
     # pass aligned_spin=False to the BNSPriorDict
-    priors = bilby.gw.prior.BNSPriorDict(aligned_spin=False)
+    priors = bilby.gw.prior.BNSPriorDict(aligned_spin=aligned_spins)
     priors.pop('mass_1')
     priors.pop('mass_2')
     if uniform_bh_masses and uniform_ns_masses:
@@ -402,12 +413,21 @@ for j in range(len(job_list)):
     to_fix = ['lambda_1']
     if zero_spins:
         to_fix += ['a_1', 'a_2', 'tilt_1', 'tilt_2', 'phi_12', 'phi_jl']
+    elif aligned_spins:
+        priors.pop('chi_1')
+        priors.pop('chi_2')
+        priors['chi_1'] = \
+            bilby.gw.prior.AlignedSpin(name='chi_1', \
+                                       a_prior=bilby.prior.Uniform(minimum=spin_min_bh, maximum=spin_max_bh))
+        priors['chi_2'] = \
+            bilby.gw.prior.AlignedSpin(name='chi_2', \
+                                       a_prior=bilby.prior.Uniform(minimum=spin_min_ns, maximum=spin_max_ns))
     else:
         priors.pop('a_1')
         priors['a_1'] = \
-            bilby.core.prior.Uniform(name='a_1', minimum=spin_min_bh, \
-                                     maximum=spin_max_bh, \
-                                     boundary='reflective')
+            bilby.prior.Uniform(name='a_1', minimum=spin_min_bh, \
+                                maximum=spin_max_bh, \
+                                boundary='reflective')
     if tight_loc:
         to_fix += ['ra', 'dec']
         priors.pop('luminosity_distance')
