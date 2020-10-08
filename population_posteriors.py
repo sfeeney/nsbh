@@ -3,11 +3,10 @@ import numpy.random as npr
 import matplotlib.pyplot as mp
 import os.path as osp
 import bilby
-import sklearn.neighbors as skn
-import sklearn.model_selection as skms 
 import pystan as ps
 import pickle
-import scipy.optimize as so
+import getdist as gd
+import getdist.plots as gdp
 
 
 def d2z(d, h_0, q_0, order=3):
@@ -64,6 +63,50 @@ def prior_change_jac(m_c, q_inv):
                  d_m_1_d_q_inv * d_m_2_d_m_c)
     return jac
 
+def pom_gmm_bic(model, x_samples):
+
+    # NB np.sum(model.log_probability(x_samples)) can sometimes be NaN
+    return 3.0 * model.n * np.log(len(x_samples)) - \
+           2.0 * np.sum(model.log_probability(x_samples))
+
+def pom_gmm_aic(model, x_samples):
+
+    # NB np.sum(model.log_probability(x_samples)) can sometimes be NaN
+    return 2.0 * 3.0 * model.n - \
+           2.0 * np.sum(model.log_probability(x_samples))
+
+def pom_opt_gmm(x_samples, weights, n_comp_min=2, n_comp_max=10, \
+                n_rpt=20, thresh=0.0001, use_aic=False):
+    
+    # loop over number of components
+    #high_weights = weights > 0.5 * np.max(weights)
+    best_models = []
+    best_scores = []
+    for n_comp in range(n_comp_min, n_comp_max + 1):
+
+        # repeat fit a few times for each n_comp to find rough optimum
+        models = []
+        scores = np.zeros(n_rpt)
+        for i in range(n_rpt):
+            #models.append(pm.gmm.GeneralMixtureModel.from_samples(pm.MultivariateGaussianDistribution, \
+            models.append(pm.gmm.GeneralMixtureModel.from_samples(pm.NormalDistribution, \
+                                                                  n_components=n_comp, \
+                                                                  X=x_samples, \
+                                                                  weights=weights, \
+                                                                  stop_threshold=thresh))
+            if use_aic:
+                scores[i] = pom_gmm_aic(models[-1], x_samples)
+            else:
+                scores[i] = pom_gmm_bic(models[-1], x_samples)
+                #scores[i] = pom_gmm_bic(models[-1], x_samples[high_weights, :])
+        i_best = np.nanargmin(scores)
+        best_models.append(models[i_best])
+        best_scores.append(scores[i_best])
+
+    # select and return best overall GMM fit
+    i_best = np.argmin(best_scores)
+    return best_models[i_best]
+
 # plot settings
 lw = 1.5
 mp.rc('font', family='serif', size=10)
@@ -117,7 +160,8 @@ else:
 lam_det_test = False
 datdir = 'data'
 outdir = 'outdir'
-kde_fit = True
+fit_d_dists = False
+kde_fit = False
 bw_grid = np.logspace(-0.5, 3.5, 10)
 #bw_grid = np.logspace(-0.5, 3.5, 100)
 test_stan = False
@@ -194,33 +238,70 @@ snrs = raw_pars['snr']
 i_sort = np.argsort(snrs)[::-1]
 target_snrs = snrs[i_sort]
 target_ids = ids[i_sort]
+target_redshifts = raw_pars['redshift'][i_sort]
 n_targets = len(target_ids)
 
 # optionally test Stan sampling of distance distributions
 if test_stan:
+    if kde_fit:
+        stub = 'kde'
+    else:
+        stub = 'gmm'
     if recompile:
-        stan_model = ps.StanModel('kde_sampling.stan')
-        with open('kde_sampling.pkl', 'wb') as f:
+        stan_model = ps.StanModel(stub + '_sampling.stan')
+        with open(stub + '_sampling.pkl', 'wb') as f:
             pickle.dump(stan_model, f)
     else:
         try:
-            with open('kde_sampling.pkl', 'rb') as f:
+            with open(stub + '_sampling.pkl', 'rb') as f:
                 stan_model = pickle.load(f)
         except EnvironmentError:
             print('ERROR: pickled Stan model ' + \
-                  '(kde_sampling.pkl) ' + \
+                  '(' + stub + '_sampling.pkl) ' + \
                   'not found. Please set recompile = True')
             exit()
 
-# optionally read in fitted KDE bandwidths
+# optionally read in fitted KDE/GMM parameters
+n_comp = np.zeros(n_targets, dtype=int)
+d_comp_weights = []
+d_comp_means = []
 if not kde_fit:
+    d_comp_stds = []
+if not fit_d_dists:
     if use_polychord:
-        kde_file = 'pc_'
+        fit_file = 'pc_'
     else:
-        kde_file = ''
-    kde_file = outdir + '/' + kde_file + base_label + '_kde_fits.txt'
-    d_bws = np.genfromtxt(kde_file, dtype=None, names=True, delimiter=',', \
-                          encoding=None)['bandwidth']
+        fit_file = ''
+    if kde_fit:
+        fit_file = outdir + '/' + fit_file + base_label + '_kde_fits.txt'
+        d_bws = np.genfromtxt(fit_file, dtype=None, names=True, \
+                              delimiter=',', encoding=None)['bandwidth']
+    else:
+
+        # read in raw fit data
+        fit_file = outdir + '/' + fit_file + base_label + '_gmm_fits.txt'
+        fit_data = np.genfromtxt(fit_file, dtype=None, names=True, \
+                                 delimiter=',', encoding=None)
+        
+        # and reform into weights, means, and std devs (bit tortuous)
+        n_lines = len(fit_data['id'])
+        inds = np.where(np.roll(fit_data['id'],1)!=fit_data['id'])[0]
+        n_targets = len(inds)
+        inds = np.append(inds, n_lines)
+        for i in range(n_targets):
+            n_comp[i] = inds[i + 1] - inds[i]
+            d_comp_weights.append(fit_data['weight'][inds[i]:inds[i + 1]])
+            d_comp_means.append(fit_data['mean'][inds[i]:inds[i + 1]])
+            d_comp_stds.append(fit_data['stddev'][inds[i]:inds[i + 1]])
+
+else:
+
+    # otherwise perform required imports
+    if kde_fit:
+        import sklearn.neighbors as skn
+        import sklearn.model_selection as skms
+    else:
+        import pomegranate as pm
 
 # optionally fix random seed
 if constrain:
@@ -237,16 +318,22 @@ fig, axes = mp.subplots(n_row, n_col, figsize=(20, height))
 #n_targets = 5
 truths = []
 skip = np.full(n_targets, False)
-n_comp = np.zeros(n_targets, dtype=int)
-d_comp_means = []
-d_comp_weights = []
 if kde_fit:
-    d_bws = np.zeros(n_targets)
+    if fit_d_dists:
+        d_bws = np.zeros(n_targets)
+    else:
+        d_bws = d_bws[0: n_targets]
 d_l = np.zeros(n_targets)
 z_cos = np.zeros(n_targets)
 v_pec = np.zeros(n_targets)
 v_pec_obs = np.zeros(n_targets)
 z_obs = np.zeros(n_targets)
+# @TODO REMOVE
+##run_ids = [34, 41, 61, 67, 97]
+#run_ids = [41, 61, 97]
+#for i in run_ids:
+# @TODO REMOVE
+#n_targets = 10
 for i in range(n_targets):
 
     # read in results file, which contains tonnes of info
@@ -268,14 +355,17 @@ for i in range(n_targets):
     if not osp.exists(osp.join(outdir, res_file)):
         skip[i] = True
         truths.append(None)
+        n_comp[i] = 1
+        d_comp_weights.append(np.zeros(1))
+        d_comp_means.append(np.zeros(1))
+        if not kde_fit:
+            d_comp_stds.append(np.zeros(1))
         continue
     result = bilby.result.read_in_result(filename=osp.join(outdir, res_file))
 
-
-    # TEMPORARY: use bisection to find true redshifts
+    # true distance and redshift
     d_l[i] = result.injection_parameters['luminosity_distance']
-    z_cos[i] = so.bisect(d2z_bisect, 0.0, z_max, args=[d_l[i], h_0, q_0])
-
+    z_cos[i] = target_redshifts[i]
 
     # draw true peculiar velocity and calculate total redshift
     v_pec[i] = npr.randn() * sig_v_pec
@@ -314,32 +404,62 @@ for i in range(n_targets):
     weights = d_l_weights * mass_weights
     weights /= np.sum(weights)
 
-    # KDE fit
-    n_comp[i] = len(d_l_samples)
-    d_comp_means.append(d_l_samples)
-    d_comp_weights.append(weights)
+    # KDE/GMM fit
     d_l_grid = np.linspace(0.95 * np.min(d_l_samples), \
                            1.05 * np.max(d_l_samples), 1000)
     if kde_fit:
+        n_comp[i] = len(d_l_samples)
+        d_comp_means.append(d_l_samples)
+        d_comp_weights.append(weights)
+    if fit_d_dists:
 
-        # gridsearch to find optimal bandwidth
-        gs = skms.GridSearchCV(skn.KernelDensity(), \
-                               {'bandwidth': bw_grid}, \
-                               cv=20)
-        gs.fit(d_l_samples[:, None], sample_weight=weights)
-        kde = gs.best_estimator_
-        pdf = np.exp(kde.score_samples(d_l_grid[:, None]))
-        d_bws[i] = kde.bandwidth
+        if kde_fit:
+
+            # KDE = one component per sample, with the same weight and 
+            # position. need gridsearch to find optimal bandwidth
+            gs = skms.GridSearchCV(skn.KernelDensity(), \
+                                   {'bandwidth': bw_grid}, \
+                                   cv=20)
+            gs.fit(d_l_samples[:, None], sample_weight=weights)
+            kde = gs.best_estimator_
+            pdf = np.exp(kde.score_samples(d_l_grid[:, None]))
+            d_bws[i] = kde.bandwidth
+
+        else:
+
+            # lower-dimensionality (2-10-component) GMM fit
+            gmm = pom_opt_gmm(d_l_samples[:, None], weights, use_aic=True)
+            pdf = np.exp(gmm.log_probability(d_l_grid))
+
+            # extract fit parameters: optimum number of components, and 
+            # their weights, means and standard deviations
+            n_comp[i] = gmm.n
+            d_comp_weights.append(np.exp(gmm.weights))
+            d_comp_means.append(np.zeros(gmm.n))
+            d_comp_stds.append(np.zeros(gmm.n))
+            for n in range(gmm.n):
+                d_comp_means[-1][n] = gmm.distributions[n].parameters[0]
+                d_comp_stds[-1][n] = gmm.distributions[n].parameters[1]
 
     else:
 
         # put together pdf from previous results
         pdf = np.zeros(1000)
-        for j in range(n_comp[i]):
-            pdf += np.exp(-0.5 * ((d_l_grid - d_l_samples[j]) / \
-                                  d_bws[i]) ** 2) / \
-                   np.sqrt(2.0 * np.pi) / d_bws[i] * weights[j]
-        pdf /= np.sum(weights)
+        if kde_fit:
+            
+            for j in range(n_comp[i]):
+                pdf += np.exp(-0.5 * ((d_l_grid - d_l_samples[j]) / \
+                                      d_bws[i]) ** 2) / \
+                       np.sqrt(2.0 * np.pi) / d_bws[i] * weights[j]
+            pdf /= np.sum(weights)
+
+        else:
+
+            for j in range(n_comp[i]):
+                pdf += np.exp(-0.5 * ((d_l_grid - d_comp_means[i][j]) / \
+                                      d_comp_stds[i][j]) ** 2) / \
+                       np.sqrt(2.0 * np.pi) / d_comp_stds[i][j] * \
+                       d_comp_weights[i][j]
 
     # plot indices
     i_x = i % n_col
@@ -363,13 +483,18 @@ for i in range(n_targets):
 
     # optionally sample from distance distributions using stan
     if test_stan:
-        stan_data = {'n_comp': len(d_l_samples), \
-                     'locs': d_l_samples, \
-                     'weights': weights, \
-                     'bw': kde.bandwidth}
+        if kde_fit:
+            stan_data = {'n_comp': len(d_l_samples), \
+                         'locs': d_l_samples, \
+                         'weights': weights, \
+                         'bw': kde.bandwidth}
+        else:
+            stan_data = {'n_comp': n_comp[i], \
+                         'weights': d_comp_weights[-1], \
+                         'locs': d_comp_means[-1], \
+                         'stds': d_comp_stds[-1]}
         fit = stan_model.sampling(data=stan_data, iter=10000, \
                                   control={'adapt_delta':0.9})
-        #print(fit)
         stan_samples = fit.extract(permuted=True, inc_warmup=False)
         shist, bin_edges = np.histogram(stan_samples['d'], bins=25, \
                                         density=True)
@@ -402,36 +527,57 @@ for i in range(n_targets, n_row * n_col):
     i_x = i % n_col
     i_y = i // n_col
     fig.delaxes(axes[i_y, i_x])
-if test_stan:
-    fig.savefig(outdir + '/' + base_label + '_d_l_post_fits_stan_test.pdf', \
-                bbox_inches='tight')
+plot_file = outdir + '/' + base_label + '_d_l_post_'
+if kde_fit:
+    plot_file = plot_file + 'kde_fits'
 else:
-    fig.savefig(base_label + '_d_l_post_fits.pdf', bbox_inches='tight')
+    plot_file = plot_file + 'gmm_fits'
+if test_stan:
+    plot_file = plot_file + '_stan_test'
+fig.savefig(plot_file + '.pdf', bbox_inches='tight')
 
 # optionally save KDE bandwidth fits
-if kde_fit:
-    fmt = '{:d},{:.9e}'
-    with open(outdir + '/' + base_label + '_kde_fits.txt', 'w') as f:
-        f.write('#id,bandwidth')
-        for i in range(n_targets):
-            f.write('\n' + fmt.format(target_ids[i], d_bws[i]))
+if fit_d_dists:
 
-exit()
+    if kde_fit:
+        
+        fmt = '{:d},{:.9e}'
+        with open(outdir + '/' + base_label + '_kde_fits.txt', 'w') as f:
+            f.write('#id,bandwidth')
+            for i in range(n_targets):
+                f.write('\n' + fmt.format(target_ids[i], d_bws[i]))
+
+    else:
+        
+        fmt = '{:d},{:.9e},{:.9e},{:.9e}'
+        with open(outdir + '/' + base_label + '_gmm_fits.txt', 'w') as f:
+            f.write('#id,weight,mean,stddev')
+            for i in range(n_targets):
+                for n in range(n_comp[i]):
+                    f.write('\n' + fmt.format(target_ids[i], \
+                                              d_comp_weights[i][n], \
+                                              d_comp_means[i][n], \
+                                              d_comp_stds[i][n]))
 
 # @TODO: fudged n_bar
 n_bar_det_coeffs = np.array([n_targets] + [0] * 14)
 
 # bit of book-keeping of KDE outputs
 n_comp_max = np.max(n_comp)
-d_means = np.zeros((n_comp_max, n_targets))
 d_weights = np.zeros((n_comp_max, n_targets))
+d_means = np.zeros((n_comp_max, n_targets))
+d_stds = np.zeros((n_comp_max, n_targets))
 for i in range(n_targets):
-    d_means[0: n_comp[i], i] = d_comp_means[i]
     d_weights[0: n_comp[i], i] = d_comp_weights[i]
+    d_means[0: n_comp[i], i] = d_comp_means[i]
+    if kde_fit:
+        d_stds[0: n_comp[i], i] = d_bws[i] * np.ones(n_comp[i])
+    else:
+        d_stds[0: n_comp[i], i] = d_comp_stds[i]
 stan_data = {'fixed_n_mrg': 1, 'n_mrg': n_targets, \
              'n_cmp_max': n_comp_max, 'n_cmp': n_comp, \
-             'obs_d_means': d_means, 'obs_d_weights': d_weights, \
-             'obs_d_bw': d_bws, 'obs_v_pec': v_pec_obs, \
+             'obs_d_weights': d_weights, 'obs_d_means': d_means, \
+             'obs_d_stds': d_stds, 'obs_v_pec': v_pec_obs, \
              'obs_z': z_obs, 'sig_v_pec': sig_v_pec, \
              'sig_obs_v_pec': sig_v_pec_obs, 'sig_z': sig_z_obs, \
              'z_max': z_max, 'n_coeffs': 15, \
@@ -451,15 +597,52 @@ else:
               '(nsbh_cosmo.pkl) ' + \
               'not found. Please set recompile = True')
         exit()
-
-fit = stan_model.sampling(data=stan_data, iter=1000)
+#fit = stan_model.sampling(data=stan_data, iter=1000)
+fit = stan_model.sampling(data=stan_data, iter=10000)
 #fit = stan_model.sampling(data=stan_data, iter=10000, \
 #                          control={'adapt_delta':0.9})
 print(fit)
+raw_samples = fit.extract(permuted=False, inc_warmup=False)
+n_pars = raw_samples.shape[2] - 1
+n_chains = raw_samples.shape[1]
+n_samples = raw_samples.shape[0]
+samples = np.zeros((n_chains * n_samples, n_pars))
+for i in range(0, n_chains):
+    for j in range(0, n_pars):
+        samples[i * n_samples: (i + 1) * n_samples, j] = raw_samples[:, i, j]
 
-print(z_cos)
-print(v_pec)
-print(d_l)
+# @TODO: save samples
+
+# cheeky plot
+pars = ['h_0', 'q_0']
+par_names = ['H_0', 'q_0']
+par_vals = [h_0, q_0]
+gd_samples = gd.MCSamples(samples=samples[:, 0: 2], names=pars, 
+                          labels=par_names, ranges={})
+g = gdp.getSubplotPlotter()
+g.settings.lw_contour = lw
+g.settings.axes_fontsize = 8
+g.triangle_plot(gd_samples, pars, filled = True, \
+                line_args = {'lw': lw, 'color': 'C0'}, \
+                contour_args = {'lws': [lw, lw]}, \
+                colors = ['C0'])
+for i in range(0, len(pars)):
+    sp_title = '$' + gd_samples.getInlineLatex(pars[i], \
+                                               limit=1) + '$'
+    g.subplots[i, i].set_title(sp_title, fontsize=12)
+    for ax in g.subplots[i, :i]:
+        ax.axhline(par_vals[i], color='gray', ls='--')
+        ax.grid(False)
+    for ax in g.subplots[i:, i]:
+        ax.axvline(par_vals[i], color='gray', ls='--')
+        ax.grid(False)
+plot_file = outdir + '/' + base_label
+if kde_fit:
+    plot_file = plot_file + '_kde_fits'
+else:
+    plot_file = plot_file + '_gmm_fits'
+mp.savefig(plot_file + '_cosmo_post_triangle_plot.pdf', bbox_inches='tight')
+
 
 exit()
 
@@ -468,7 +651,7 @@ exit()
 # 1) DONE: tidy plot name
 # 2) DONE: add true and observed peculiar velocities
 # 3) DONE: recall true redshift and add noise
-# 4) save true redshifts... will have to rerun everything FFS. just back out for now?
+# 4) DONE: save true redshifts... will have to rerun everything FFS. just back out for now?
 # 5) fix up n_bar
 # 6) try sampling for five or ten mergers
 # 7) rate sampling!

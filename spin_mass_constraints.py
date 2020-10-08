@@ -4,12 +4,28 @@ import bilby.gw.conversion as bc
 import matplotlib.pyplot as mp
 import matplotlib.cm as mpcm
 import matplotlib.colors as mpc
+import os as os
 import os.path as osp
 import getdist as gd
 import getdist.plots as gdp
 import copy
 #import matplotlib
 #matplotlib.use('TkAgg')
+
+def comp_masses_to_chirp_q(m_1, m_2):
+
+    m_c = (m_1 * m_2) ** 0.6 / (m_1 + m_2) ** 0.2
+    q_inv = m_2 / m_1
+
+    return m_c, q_inv
+
+def chirp_q_to_comp_masses(m_c, q_inv):
+
+    q = 1.0 / q_inv
+    m_2 = (1 + q) ** 0.2 / q ** 0.6 * m_c
+    m_1 = q * m_2
+
+    return m_1, m_2
 
 # plot settings
 lw = 1.5
@@ -18,34 +34,143 @@ mp.rcParams['text.latex.preamble'] = [r'\boldmath']
 mp.rcParams['axes.linewidth'] = lw
 mp.rcParams['lines.linewidth'] = lw
 
-# common settings
-duration = 32.0
+# settings
+use_mpi = False
+snr_thresh = 12.0
+duration = 32.0 # 8.0
 sampling_frequency = 2048.
-minimum_frequency = 20.0
-reference_frequency = 14.0
-ifo_list = ['H1', 'L1', 'V1', 'K1'] # ['H1', 'L1', 'V1']
+minimum_frequency = 20.0 # 40.0
+reference_frequency = 14.0 # 50.0
+min_network = False
+if min_network:
+    ifo_list = ['H1', 'L1', 'V1', 'K1-']
+else:
+    ifo_list = ['H1+', 'L1+', 'V1+', 'K1+', 'A1']
+use_polychord = True
+use_weighted_samples = False
+if use_polychord:
+    n_live = 1000 # 500
+else:
+    n_live = 1000
 zero_spins = False
 remnants_only = True
-tight_loc = True
+min_remnant_mass = 0.01
+tight_loc = False
+fixed_ang = True
+sample_z = True
+redshift_rate = True
+uniform_bh_masses = True
+uniform_ns_masses = True
+low_metals = True
+broad_bh_spins = True
+seobnr_waveform = True
+if seobnr_waveform:
+    waveform_approximant = 'SEOBNRv4_ROM_NRTidalv2_NSBH'
+    aligned_spins = True
+else:
+    waveform_approximant = 'IMRPhenomPv2_NRTidal'
+    aligned_spins = False
+lam_det_test = False
+old = False
 outdir = 'outdir'
+
+# BH mass and spin prior limits
+if uniform_bh_masses:
+    m_min_bh = 2.5
+    if low_metals:
+        m_max_bh = 40.0
+    else:
+        m_max_bh = 12.0
+else:
+    m_min_bh = 5.0
+    m_max_bh = 20.0
+spin_min_bh = 0.0
+if broad_bh_spins:
+    spin_max_bh = 0.99
+else:
+    spin_max_bh = 0.5
+
+# NS mass and spin prior limits
+m_min_ns = 1.0
+if uniform_ns_masses:
+    m_max_ns = 2.42
+else:
+    m_max_ns = 2.0
+spin_min_ns = 0.0
+spin_max_ns = 0.05
+
+# conversions
+m_c_min, _ = comp_masses_to_chirp_q(m_min_bh, m_min_ns)
+m_c_max, _ = comp_masses_to_chirp_q(m_max_bh, m_max_ns)
+_, q_inv_min = comp_masses_to_chirp_q(m_max_bh, m_min_ns)
+_, q_inv_max = comp_masses_to_chirp_q(m_min_bh, m_max_ns)
+
+# getdist settings
+if old:
+    gd_ranges={'a_1':(0.0, 0.8), 'iota':(0.0, np.pi), \
+               'q':(0.02, 0.4), 'lambda_2':(0.0, 4000.0), \
+               'lambda_tilde':(0.0, None)}
+else:
+    gd_ranges={'a_1':(spin_min_bh, spin_max_bh), \
+               'iota':(0.0, np.pi), \
+               'q':(q_inv_min, q_inv_max), \
+               'lambda_2':(0.0, 4500.0), \
+               'lambda_tilde':(0.0, None)}
+
+# filename stub
 if ifo_list == ['H1', 'L1', 'V1']:
     ifo_str = ''
 else:
     ifo_str = '_'.join(ifo_list) + '_'
-label_str = 'nsbh_inj_' + ifo_str + \
-            '{:d}_d_{:04.1f}_mf_{:4.1f}_rf_{:4.1f}'
-if zero_spins:
-    label_str += '_zero_spins'
-if tight_loc:
-    label_str += '_tight_loc'
+label_str = 'nsbh_pop_' + ifo_str + \
+            'd_{:04.1f}_mf_{:4.1f}_rf_{:4.1f}'
+if sample_z:
+    label_str += '_dndz'
+    if redshift_rate:
+        label_str += '_rr'
+if uniform_bh_masses:
+    label_str += '_ubhmp_{:.1f}_{:.1f}'.format(m_min_bh, m_max_bh)
+if uniform_ns_masses:
+    label_str += '_unsmp_{:.1f}_{:.1f}'.format(m_min_ns, m_max_ns)
+if broad_bh_spins:
+    label_str += '_bbhsp'
+if seobnr_waveform:
+    label_str += '_seobnr'
+if aligned_spins:
+    label_str += '_aligned'
+base_label = label_str.format(duration, minimum_frequency, \
+                              reference_frequency)
 
-# read list of all targets
-targets = np.genfromtxt('data/remnant_sorted_detected.txt', delimiter=' ')
-target_ids = targets[:, 0].astype(int)
-target_snrs = targets[:, 2]
-if remnants_only:
-    target_ids = target_ids[targets[:, 1] > 0.0]
-    target_snrs = target_snrs[targets[:, 1] > 0.0]
+# read injections from file
+if old:
+
+    targets = np.genfromtxt('data/remnant_sorted_detected.txt', delimiter=' ')
+    target_ids = targets[:, 0].astype(int)
+    target_snrs = targets[:, 2]
+    if remnants_only:
+        target_ids = target_ids[targets[:, 1] > 0.0]
+        target_snrs = target_snrs[targets[:, 1] > 0.0]
+
+else:
+
+    par_file = base_label + '.txt'
+    raw_pars = np.genfromtxt('data/' + par_file, \
+                             dtype=None, names=True, delimiter=',', \
+                             encoding=None)
+    det = raw_pars['snr'] >= snr_thresh
+    if remnants_only:
+        det = np.logical_and(det, raw_pars['remnant_mass'] > min_remnant_mass)
+    raw_pars = raw_pars[det]
+    ids = np.array([int(i_sim.split(':')[-1]) for i_sim in \
+                    raw_pars['simulation_id']])
+    snrs = raw_pars['snr']
+    i_sort = np.argsort(snrs)[::-1]
+    target_snrs = snrs[i_sort]
+    target_ids = ids[i_sort]
+
+#for i in range(len(target_ids)):
+#    print(i + 1, target_ids[i], target_snrs[i])
+#exit()
 
 # loop over targets
 n_targets = len(target_ids)
@@ -53,11 +178,21 @@ samples = []
 truths = []
 skip = np.full(n_targets, False)
 for i in range(n_targets):
-#for i in range(9):
 
     # read in results file, which contains tonnes of info
-    label = label_str.format(target_ids[i], duration, minimum_frequency, \
-                             reference_frequency)
+    label = base_label + '_inj_{:d}'.format(target_ids[i])
+    if use_polychord:
+        label = 'pc_' + label
+    if zero_spins:
+        label += '_zero_spins'
+    if tight_loc:
+        label += '_tight_loc'
+    elif fixed_ang:
+        label += '_fixed_ang'
+    if n_live != 1000:
+        label += '_nlive_{:04d}'.format(n_live)
+    #label = label_str.format(target_ids[i], duration, minimum_frequency, \
+    #                         reference_frequency)
     res_file = label + '_result.json'
     print(osp.join(outdir, res_file))
     if not osp.exists(osp.join(outdir, res_file)):
@@ -80,50 +215,131 @@ for i in range(n_targets):
                    all_pars['luminosity_distance'], \
                    all_pars['mass_ratio'], \
                    all_pars['lambda_2'], \
-                   all_pars['lambda_tilde']])
-    
-    # convert to GetDist MCSamples object
-    distance_label = r'(d_L - d_L^{\rm true})/d_L^{\rm true}'
-    try:
-        delta_distance = \
-            (result.posterior.luminosity_distance - \
-             result.injection_parameters['luminosity_distance']) / \
-            result.injection_parameters['luminosity_distance']
-    except ValueError:
-        skip[i] = True
-        samples.append(None)
-        continue
-    gd_samples = np.array([result.posterior.a_1, \
-                           result.posterior.mass_1, \
-                           delta_distance, \
-                           result.posterior.iota, \
-                           result.posterior.mass_ratio, \
-                           result.posterior.lambda_2, \
-                           result.posterior.lambda_tilde]).T
-    samples.append(gd.MCSamples(samples=gd_samples, \
-                                names=['a_1', 'mass_1', \
-                                       'distance', 'iota', \
-                                       'q', 'lambda_2', 'lambda_tilde'], \
-                                labels=['a_1', 'm_1', \
-                                        distance_label, r'\iota', \
-                                        'm_2/m_1', r'\Lambda_{\rm NS}', \
-                                        r'\tilde{\Lambda}'], \
-                                ranges={'a_1':(0.0, 0.8), \
-                                        'iota':(0.0, np.pi), \
-                                        'q':(0.02, 0.4), \
-                                        'lambda_2':(0.0, 4000.0), \
-                                        'lambda_tilde':(0.0, None)}))
+                   all_pars['lambda_tilde'], \
+                   all_pars['spin_1z']])
+
+    # if sampling with polychord optionally use full, variable weight 
+    # posterior samples: bilby takes the equal-weight posterior samples 
+    # to build its result.posterior. there are no distance samples this
+    # way though!
+    if use_polychord and use_weighted_samples:
+
+        # set up required paramnames file
+        if aligned_spins:
+            template = 'nsbh_aligned_spins.paramnames'
+        else:
+            template = 'nsbh_precess_spins.paramnames'
+        gd_root = osp.join(outdir, osp.join('chains', label))
+        gd_pars = gd_root + '.paramnames'
+        if not osp.exists(gd_pars):
+            os.symlink(template, gd_pars)
+
+        # read in samples and fill in derived parameters
+        gd_samples = gd.loadMCSamples(gd_root)
+        pars = gd_samples.getParams()
+        m_1, m_2 = chirp_q_to_comp_masses(pars.chirp_mass, \
+                                          pars.mass_ratio)
+        gd_samples.addDerived(m_1, name='mass_1', label='m_1')
+        gd_samples.addDerived(m_2, name='mass_2', label='m_2')
+        gd_samples.addDerived(np.abs(pars.chi_1), name='a_1', label='a_1')
+        samples.append(gd_samples)
+
+    else:
+        
+        # convert to GetDist MCSamples object
+        distance_label = r'(d_L - d_L^{\rm true})/d_L^{\rm true}'
+        try:
+            delta_distance = \
+                (result.posterior.luminosity_distance - \
+                 result.injection_parameters['luminosity_distance']) / \
+                result.injection_parameters['luminosity_distance']
+        except ValueError:
+            skip[i] = True
+            samples.append(None)
+            continue
+        if aligned_spins:
+            gd_samples = np.array([result.posterior.a_1, \
+                                   result.posterior.mass_1, \
+                                   delta_distance, \
+                                   result.posterior.iota, \
+                                   result.posterior.mass_ratio, \
+                                   result.posterior.lambda_2, \
+                                   result.posterior.lambda_tilde, \
+                                   result.posterior.chi_1]).T
+            samples.append(gd.MCSamples(samples=gd_samples, \
+                                        names=['a_1', 'mass_1', \
+                                               'distance', 'iota', \
+                                               'q', 'lambda_2', \
+                                               'lambda_tilde', 'chi_1'], \
+                                        labels=['a_1', 'm_1', \
+                                                distance_label, r'\iota', \
+                                                'm_2/m_1', r'\Lambda_{\rm NS}', \
+                                                r'\tilde{\Lambda}', r'\chi_1'], \
+                                        ranges=gd_ranges))
+        else:
+            gd_samples = np.array([result.posterior.a_1, \
+                                   result.posterior.mass_1, \
+                                   delta_distance, \
+                                   result.posterior.iota, \
+                                   result.posterior.mass_ratio, \
+                                   result.posterior.lambda_2, \
+                                   result.posterior.lambda_tilde]).T
+            samples.append(gd.MCSamples(samples=gd_samples, \
+                                        names=['a_1', 'mass_1', \
+                                               'distance', 'iota', \
+                                               'q', 'lambda_2', \
+                                               'lambda_tilde'], \
+                                        labels=['a_1', 'm_1', \
+                                                distance_label, r'\iota', \
+                                                'm_2/m_1', r'\Lambda_{\rm NS}', \
+                                                r'\tilde{\Lambda}'], \
+                                        ranges=gd_ranges))
 
 # snr-ordered colouring
 n_targets = len(samples)
 cm = mpcm.get_cmap('plasma')
 cols = [mpc.rgb2hex(cm(x)) for x in np.linspace(0.2, 0.8, n_targets)[::-1]]
 
+# tweak output filename
+if use_polychord:
+    base_label = 'pc_' + base_label
+
+# single-axis BH mass-spin plot
+fig, ax = mp.subplots()
+g = gdp.get_single_plotter()
+scatter = True
+for i in range(n_targets - 1, -1, -1):
+    if skip[i]:
+        continue
+    else:
+        col = cols[n_targets - 1 - i]
+        #col = cols[i]
+        if scatter:
+            g.plot_2d_scatter(samples[i], 'mass_1', 'a_1', color=col, \
+                              ax=ax, alpha=0.05)
+        else:
+            g.plot_2d(samples[i], 'mass_1', 'a_1', colors=[col], \
+                      ax=ax, filled=True)
+            ax.plot([truths[i][0]], [truths[i][1]], \
+                    marker='+', color=col)
+ax.grid(False)
+ax.set_xlim(m_min_bh, m_max_bh)
+ax.set_ylim(spin_min_bh, spin_max_bh)
+fig.subplots_adjust(wspace=0.0, hspace=0.0)
+if scatter:
+    fig.savefig(osp.join(outdir, base_label + \
+                         '_disruption_line_scatter.pdf'), \
+                bbox_inches='tight')
+else:
+    fig.savefig(osp.join(outdir, base_label + '_disruption_line.pdf'), \
+                bbox_inches='tight')
+
 # generate figure and plot!
 n_col = 8
 n_row = int(np.ceil(n_targets / float(n_col)))
+height = 2.86 * n_row
 n_ext = n_col * n_row - n_targets
-fig, axes = mp.subplots(n_row, n_col, figsize=(20, 20))
+fig, axes = mp.subplots(n_row, n_col, figsize=(20, height))
 g = gdp.get_single_plotter()
 i_x = 0
 i_y = 0
@@ -140,17 +356,30 @@ for i in range(n_row * n_col):
             continue
 
         # plot mass and spin constraints
-        g.plot_2d(samples[i], 'mass_1', 'a_1', colors=[cols[i]], \
-                  ax=axes[i_y, i_x], filled=True)
+        if not aligned_spins:
+            g.plot_2d(samples[i], 'mass_1', 'chi_1', colors=[cols[i]], \
+                      ax=axes[i_y, i_x], filled=True)
+            axes[i_y, i_x].plot([truths[i][0]], [truths[i][8]], \
+                                marker='+', color='k')
+        else:
+            g.plot_2d(samples[i], 'mass_1', 'a_1', colors=[cols[i]], \
+                      ax=axes[i_y, i_x], filled=True)
+            axes[i_y, i_x].plot([truths[i][0]], [truths[i][1]], \
+                                marker='+', color='k')
         label = r'$\rho=' + '{:4.1f}'.format(target_snrs[i]) + '$'
-        axes[i_y, i_x].plot([truths[i][0]], [truths[i][1]], \
-                            marker='+', color='k')
-        axes[i_y, i_x].text(7.75, 0.725, label)
+        axes[i_y, i_x].text(0.95, 0.95, label, ha='right', va='top', \
+                            transform=axes[i_y, i_x].transAxes)
         axes[i_y, i_x].grid(False)
-        axes[i_y, i_x].set_xlim(4.0, 10.0)
-        axes[i_y, i_x].set_ylim(0.0, 0.8)
-        axes[i_y, i_x].set_xticks([5.0, 7.0, 9.0])
-        axes[i_y, i_x].set_yticks([0.1, 0.3, 0.5, 0.7])
+        axes[i_y, i_x].set_xlim(m_min_bh, m_max_bh)
+        if not aligned_spins:
+            axes[i_y, i_x].set_ylim(-spin_max_bh, spin_max_bh)
+        else:
+            axes[i_y, i_x].set_ylim(spin_min_bh, spin_max_bh)
+        #axes[i_y, i_x].set_xticks([5.0, 7.0, 9.0])
+        #axes[i_y, i_x].set_yticks([0.1, 0.3, 0.5, 0.7])
+        
+        axes[i_y, i_x].set_xlim(m_min_bh, 18.0)
+        axes[i_y, i_x].set_ylim(0.1, spin_max_bh)
 
         # remove axis labels where they would otherwise overlap
         if i_x > 0:
@@ -172,11 +401,13 @@ for i in range(n_row * n_col):
 
 # save plot
 fig.subplots_adjust(wspace=0.0, hspace=0.0)
-fig.savefig(osp.join(outdir, 'spin_mass_constraints.pdf'), bbox_inches='tight')
+fig.savefig(osp.join(outdir, base_label + '_spin_mass_constraints.pdf'), \
+            bbox_inches='tight')
+exit()
 
 
 # also generate a distance plot
-fig, axes = mp.subplots(n_row, n_col, figsize=(20, 20))
+fig, axes = mp.subplots(n_row, n_col, figsize=(20, height))
 g = gdp.get_single_plotter()
 i_x = 0
 i_y = 0
@@ -192,7 +423,7 @@ for i in range(n_row * n_col):
                 i_y += 1
             continue
 
-        # plot mass and spin constraints
+        # plot distance and inclination constraints
         g.plot_2d(samples[i], 'distance', 'iota', colors=[cols[i]], \
                   ax=axes[i_y, i_x], filled=True)
         #g.plot_1d(samples[i], 'distance', color=cols[i], \
@@ -200,19 +431,30 @@ for i in range(n_row * n_col):
         label = r'$\rho=' + '{:4.1f}'.format(target_snrs[i]) + '$'
         d_label = r'$d_L^{\rm true}=' + \
                   '{:d}'.format(int(truths[i][4])) + r'\,{\rm Mpc}$'
-        if truths[i][3] > 2.2:
-            axes[i_y, i_x].text(0.12, 0.5, label, ha='right')
-            axes[i_y, i_x].text(0.12, 0.2, d_label, ha='right')
+        if truths[i][3] > np.pi / 2.0:
+            text_y = 0.125
+            axes[i_y, i_x].text(0.95, 0.125, label, ha='right', va='bottom', \
+                                transform=axes[i_y, i_x].transAxes)
+            axes[i_y, i_x].text(0.95, 0.04, d_label, ha='right', va='bottom', \
+                                transform=axes[i_y, i_x].transAxes)
         else:
-            axes[i_y, i_x].text(0.12, 2.8, label, ha='right')
-            axes[i_y, i_x].text(0.12, 2.5, d_label, ha='right')
+            text_y = 0.95
+            axes[i_y, i_x].text(0.95, 0.95, label, ha='right', va='top', \
+                                transform=axes[i_y, i_x].transAxes)
+            axes[i_y, i_x].text(0.95, 0.875, d_label, ha='right', va='top', \
+                                transform=axes[i_y, i_x].transAxes)
         axes[i_y, i_x].plot([truths[i][2]], [truths[i][3]], \
                             marker='+', color='k')
         axes[i_y, i_x].grid(False)
-        axes[i_y, i_x].set_xlim(-0.125, 0.125)
+        if tight_loc:
+            axes[i_y, i_x].set_xlim(-0.125, 0.125)
+            axes[i_y, i_x].set_xticks([-0.1, -0.05, 0.0, 0.05, 0.1])
+            axes[i_y, i_x].set_xticklabels(['-0.1', '-0.05', '0', '0.05', '0.1'])
+        else:
+            axes[i_y, i_x].set_xlim(-0.4, 0.4)
+            axes[i_y, i_x].set_xticks([-0.3, -0.15, 0.0, 0.15, 0.3])
+            axes[i_y, i_x].set_xticklabels(['-0.3', '-0.15', '0', '0.15', '0.3'])
         axes[i_y, i_x].set_ylim(0.0, np.pi)
-        axes[i_y, i_x].set_xticks([-0.1, -0.05, 0.0, 0.05, 0.1])
-        axes[i_y, i_x].set_xticklabels(['-0.1', '-0.05', '0', '0.05', '0.1'])
         axes[i_y, i_x].set_yticks([0.0, np.pi/4.0, np.pi/2.0, 3.0*np.pi/4.0])
         axes[i_y, i_x].set_yticklabels(['0', r'$\pi/4$', r'$\pi/2$', r'$3\pi/4$'])
 
@@ -236,11 +478,12 @@ for i in range(n_row * n_col):
 
 # save plot
 fig.subplots_adjust(wspace=0.0, hspace=0.0)
-fig.savefig(osp.join(outdir, 'dis_inc_constraints.pdf'), bbox_inches='tight')
+fig.savefig(osp.join(outdir, base_label + '_dis_inc_constraints.pdf'), \
+            bbox_inches='tight')
 
 
 # also generate a Lambda plot
-fig, axes = mp.subplots(n_row, n_col, figsize=(20, 20))
+fig, axes = mp.subplots(n_row, n_col, figsize=(20, height))
 g = gdp.get_single_plotter()
 i_x = 0
 i_y = 0
@@ -256,17 +499,21 @@ for i in range(n_row * n_col):
                 i_y += 1
             continue
 
-        # plot mass and spin constraints
+        # plot lambda and mass ratio constraints
         g.plot_2d(samples[i], 'q', 'lambda_2', colors=[cols[i]], \
                   ax=axes[i_y, i_x], filled=True)
         label = r'$\rho=' + '{:4.1f}'.format(target_snrs[i]) + '$'
-        axes[i_y, i_x].text(0.26, 3700, label)
+        axes[i_y, i_x].text(0.95, 0.95, label, ha='right', va='top', \
+                            transform=axes[i_y, i_x].transAxes)
         axes[i_y, i_x].plot([truths[i][5]], [truths[i][6]], \
                             marker='+', color='k')
         axes[i_y, i_x].grid(False)
-        axes[i_y, i_x].set_xlim(0.02, 0.4)
-        axes[i_y, i_x].set_xticks([0.1, 0.2, 0.3])
-        axes[i_y, i_x].set_ylim(0.0, 4000.0)
+        axes[i_y, i_x].set_xlim(q_inv_min, q_inv_max)
+        #axes[i_y, i_x].set_xticks([0.1, 0.2, 0.3])
+        if old:
+            axes[i_y, i_x].set_ylim(0.0, 4000.0)
+        else:
+            axes[i_y, i_x].set_ylim(0.0, 4500.0)
 
         # remove axis labels where they would otherwise overlap
         if i_x > 0:
@@ -288,11 +535,12 @@ for i in range(n_row * n_col):
 
 # save plot
 fig.subplots_adjust(wspace=0.0, hspace=0.0)
-fig.savefig(osp.join(outdir, 'lambda_q_constraints.pdf'), bbox_inches='tight')
+fig.savefig(osp.join(outdir, base_label + '_lambda_q_constraints.pdf'), \
+            bbox_inches='tight')
 
 
 # also generate a Lambda-tilde plot
-fig, axes = mp.subplots(n_row, n_col, figsize=(20, 20))
+fig, axes = mp.subplots(n_row, n_col, figsize=(20, height))
 g = gdp.get_single_plotter()
 i_x = 0
 i_y = 0
@@ -308,16 +556,17 @@ for i in range(n_row * n_col):
                 i_y += 1
             continue
 
-        # plot mass and spin constraints
+        # plot reduced lambda and spin constraints
         g.plot_2d(samples[i], 'a_1', 'lambda_tilde', colors=[cols[i]], \
                   ax=axes[i_y, i_x], filled=True)
         label = r'$\rho=' + '{:4.1f}'.format(target_snrs[i]) + '$'
-        axes[i_y, i_x].text(0.5, 180, label)
+        axes[i_y, i_x].text(0.95, 0.95, label, ha='right', va='top', \
+                            transform=axes[i_y, i_x].transAxes)
         axes[i_y, i_x].plot([truths[i][1]], [truths[i][7]], \
                             marker='+', color='k')
         axes[i_y, i_x].grid(False)
-        axes[i_y, i_x].set_xlim(0.0, 0.8)
-        axes[i_y, i_x].set_xticks([0.1, 0.3, 0.5, 0.7])
+        axes[i_y, i_x].set_xlim(spin_min_bh, spin_max_bh)
+        #axes[i_y, i_x].set_xticks([0.1, 0.3, 0.5, 0.7])
         axes[i_y, i_x].set_ylim(0.0, 200.0)
         axes[i_y, i_x].set_yticks([0.0, 50.0, 100.0, 150.0])
 
@@ -341,4 +590,5 @@ for i in range(n_row * n_col):
 
 # save plot
 fig.subplots_adjust(wspace=0.0, hspace=0.0)
-fig.savefig(osp.join(outdir, 'lambda_spin_constraints.pdf'), bbox_inches='tight')
+fig.savefig(osp.join(outdir, base_label + '_lambda_spin_constraints.pdf'), \
+            bbox_inches='tight')

@@ -182,7 +182,7 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
                 z_max = d2z(d_max, h_0, q_0)
         n_inj = fixed_count
         n_per_sec = fixed_count / (t_max - t_min)
-    
+
     # draw merger times consistent with the expected rate. add a 
     # check to ensure that the latest merger time is within the 
     # observation window
@@ -447,7 +447,7 @@ z_max_fid = d2z(d_max, h_0_fid, q_0_fid)
 
 # set out grid of parameters
 n_grid = 5
-n_rpts = 3
+n_rpts = 4
 n_jobs = n_grid * n_grid * n_rpts
 h_0_min, h_0_max = 60.0, 80.0
 q_0_min, q_0_max = -2.0, 1.0
@@ -471,6 +471,7 @@ stats = np.empty((len(job_list), ), dtype=dtypes)
 
 # loop over jobs
 print('process {:d} jobs: '.format(rank), job_list)
+i_store = 0
 for i_job in job_list:
 
     # determine grid indices. jobs are ordered such that first 
@@ -639,7 +640,6 @@ for i_job in job_list:
     n_det_rem = np.sum(det_rem)
 
     # store stats
-    i_store = i_job - i_rpt * n_grid ** 2
     stats['i_job'][i_store] = i_job
     stats['i_h_0'][i_store] = i_h_0
     stats['i_q_0'][i_store] = i_q_0
@@ -666,6 +666,7 @@ for i_job in job_list:
             stats['d_max_det_rem'][i_store] = 0.0
         else:
             stats['d_max_det_rem'][i_store] = np.max(data['distance'][det_rem])
+    i_store += 1
 
 # save to file
 fname = 'data/' + label + \

@@ -169,7 +169,7 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
             z_max = d2z(d_max, h_0, q_0)
         n_inj = fixed_count
         n_per_sec = fixed_count / (t_max - t_min)
-    
+
     # draw merger times consistent with the expected rate. add a 
     # check to ensure that the latest merger time is within the 
     # observation window
@@ -250,7 +250,7 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
     dtypes = [('simulation_id', 'U256'), ('mass1', float), \
               ('mass2', float), ('spin1x', float), ('spin1y', float), \
               ('spin1z', float), ('spin2x', float), \
-              ('spin2y', float), ('spin2z', float), \
+              ('spin2y', float), ('spin2z', float), ('redshift', float), \
               ('distance', float), ('inclination', float), \
               ('coa_phase', float), ('polarization', float), \
               ('longitude', float), ('latitude', float), \
@@ -266,6 +266,7 @@ def nsbh_population(rate, t_min, t_max, f_online, d_min, d_max, h_0,\
     data['spin2x'] = a_2_xs
     data['spin2y'] = a_2_ys
     data['spin2z'] = a_2_zs
+    data['redshift'] = redshifts
     data['distance'] = distances
     data['inclination'] = incs
     data['coa_phase'] = coa_phases
@@ -319,10 +320,11 @@ t_start = 1325030418
 t_stop = t_start + t_obs * 3600 * 24 * 365
 f_online = 0.5
 seed = 141023
-to_store = ['simulation_id', 'mass1', 'mass2', 'spin1x', 'spin1y', 'spin1z', \
-            'spin2x' , 'spin2y', 'spin2z', 'distance', 'inclination', \
-            'coa_phase', 'polarization', 'longitude', 'latitude', \
-            'geocent_end_time', 'geocent_end_time_ns']
+to_store = ['simulation_id', 'mass1', 'mass2', 'spin1x', 'spin1y', \
+            'spin1z', 'spin2x' , 'spin2y', 'spin2z', 'redshift', \
+            'distance', 'inclination', 'coa_phase', 'polarization', \
+            'longitude', 'latitude', 'geocent_end_time', \
+            'geocent_end_time_ns']
 n_to_store = len(to_store)
 use_lal = False
 sample_z = True
@@ -331,7 +333,7 @@ uniform_bh_masses = True
 uniform_ns_masses = True
 low_metals = True
 broad_bh_spins = True
-seobnr_waveform = True
+seobnr_waveform = False
 if seobnr_waveform:
     waveform_approximant = 'SEOBNRv4_ROM_NRTidalv2_NSBH'
     aligned_spins = True
@@ -1030,7 +1032,7 @@ mp.close(fig_dq)
 
 # save everything to file
 fmt = '{:s},{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},' + \
-      '{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},{:d},' + \
+      '{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},{:.9e},{:d},' + \
       '{:d},{:.9e},{:.9e},{:.9e}'
 with open('data/' + label + '.txt', 'w') as f:
     f.write('#' + ','.join(to_store) + ',lambda_2,remnant_mass,snr')
@@ -1040,10 +1042,11 @@ with open('data/' + label + '.txt', 'w') as f:
                            data['mass2'][i], data['spin1x'][i], \
                            data['spin1y'][i], data['spin1z'][i], \
                            data['spin2x'][i], data['spin2y'][i], \
-                           data['spin2z'][i], data['distance'][i], \
-                           data['inclination'][i], data['coa_phase'][i], \
-                           data['polarization'][i], data['longitude'][i], \
-                           data['latitude'][i], data['geocent_end_time'][i], \
+                           data['spin2z'][i], data['redshift'][i], \
+                           data['distance'][i], data['inclination'][i], \
+                           data['coa_phase'][i], data['polarization'][i], \
+                           data['longitude'][i], data['latitude'][i], \
+                           data['geocent_end_time'][i], \
                            data['geocent_end_time_ns'][i], lambdas[i], \
                            remnant_masses[i], snrs[i]))
 
