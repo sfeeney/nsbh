@@ -18,6 +18,7 @@ import astropy.units as au
 import ns_eos_aw as nseos
 import math
 import sys
+import pickle
 
 def allocate_jobs(n_jobs, n_procs=1, rank=0):
     n_j_allocated = 0
@@ -343,6 +344,7 @@ to_store = ['simulation_id', 'mass1', 'mass2', 'spin1x', 'spin1y', 'spin1z', \
             'geocent_end_time', 'geocent_end_time_ns']
 n_to_store = len(to_store)
 use_lal = False
+min_remnant_mass = 0.01
 sample_z = True
 redshift_rate = True
 uniform_bh_masses = True
@@ -356,7 +358,7 @@ if seobnr_waveform:
 else:
     waveform_approximant = 'IMRPhenomPv2_NRTidal'
     aligned_spins = False
-cf_bilby = False
+store_all_selection = True
 
 # BH mass and spin dists
 if uniform_bh_masses:
@@ -468,6 +470,8 @@ else:
     dtypes.append(('d_max_det', float))
     dtypes.append(('d_max_det_rem', float))
 stats = np.empty((len(job_list), ), dtype=dtypes)
+if store_all_selection:
+    selection = []
 
 # loop over jobs
 print('process {:d} jobs: '.format(rank), job_list)
@@ -634,7 +638,7 @@ for i_job in job_list:
     # define detected sample
     det = snrs > snr_thresh
     n_det = np.sum(det)
-    has_remnant = remnant_masses > 0.0
+    has_remnant = remnant_masses > min_remnant_mass
     n_rem = np.sum(has_remnant)
     det_rem = np.logical_and(has_remnant, det)
     n_det_rem = np.sum(det_rem)
@@ -668,10 +672,19 @@ for i_job in job_list:
             stats['d_max_det_rem'][i_store] = np.max(data['distance'][det_rem])
     i_store += 1
 
+    # optionally store all of the information involved in the selection
+    if store_all_selection:
+        selection.append([i_job, i_h_0, i_q_0, data['redshift'], \
+                          snrs, remnant_masses])
+
 # save to file
 fname = 'data/' + label + \
         '_n_det_proc_{:d}_of_{:d}.txt'.format(rank, n_procs)
 np.savetxt(fname, stats, delimiter=',', \
            header=','.join(stats.dtype.names), \
            fmt='%d,%d,%d,%f,%f,%d,%d,%d,%f,%f')
-
+if store_all_selection:
+    fname = 'data/' + label + \
+            '_n_det_selection_proc_{:d}_of_{:d}.pkl'.format(rank, n_procs)
+    with open(fname, 'wb') as f:
+        pickle.dump(selection, f)
