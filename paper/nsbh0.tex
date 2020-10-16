@@ -24,6 +24,7 @@
 %%
 %% using aastex version 6.3
 \documentclass[twocolumn]{aastex63}
+\usepackage{amsmath,bm}
 
 %% The default is a single spaced, 10 point font, single spaced article.
 %% There are 5 other style options available via an optional argument. They
@@ -187,8 +188,24 @@ Other restrictions:
 
 \section{Methods} \label{sec:methods}
 
+The final posterior we evaluate is given by
+\begin{widetext}
+\begin{align}
+{\rm P}(H_0, q_0, \Gamma, \{z, v\} | N, \{\hat{\bm{h}}_+, \hat{\bm{h}}_\times, \hat{z}, \hat{v} \}, \rho_*, I) & \propto
+{\rm P}(H_0, q_0, \Gamma | I) \exp \left( -\bar{N}[H_0, q_0, \Gamma, \rho_*] \right) \\
+& \times \prod_{i = 1}^{N} \frac{\Gamma}{1 + z_i} \frac{{\rm d}V}{{\rm d}z}(H_0, q_0) {\rm P}(\hat{\bm{h}}_{+,i}, \hat{\bm{h}}_{\times,i} | d_L[z_i, H_0, q_0]) P(v_i|I) P(\hat{v}_i | v_i) P(\hat{z}_i | z_i), \nonumber
+\end{align}
+\end{widetext}
+where I've dropped a bunch of fixed parameters, such as the noise curves, errors on observed peculiar velocities and redshifts, observation time (perhaps we can bundle all of these into a set $O$?). Brackets denote sets of quantities, bold denotes per-source vectors. For the purposes of learning about cosmology, the true redshifts and peculiar velocities are uninteresting, and so we marginalize over these parameters. The first PDF in the product is the gravitational-wave likelihood marginalized over all parameters ($\boldsymbol{\theta}$) other than the distance to the merger,
+\begin{equation}
+{\rm P}(\hat{\bm{h}}_{+,i}, \hat{\bm{h}}_{\times,i} | d_L) = \int {\rm d}\boldsymbol{\theta} \, {\rm P}(\boldsymbol{\theta},I) {\rm P}(\hat{\bm{h}}_{+,i}, \hat{\bm{h}}_{\times,i} | d_L, \boldsymbol{\theta}),
+\end{equation}
+where $\boldsymbol{\theta}$ consists of the merger's chirp mass, mass ratio, spin magnitudes and orientations (where appropriate), inclination, polarization angle, tidal deformability, and time and phase at coalescence.
+
 
 \section{Results} \label{sec:results}
+
+Some plots, which make the acknowledgments go nuts.
 
 \begin{figure*}[ht!]
 \plotone{{pc_nsbh_pop_H1+_L1+_V1+_K1+_A1_d_32.0_mf_20.0_rf_14.0_dndz_rr_ubhmp_2.5_40.0_unsmp_1.0_2.4_bbhsp_seobnr_aligned_disruption_line_in_out_comp}.pdf}
