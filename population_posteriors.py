@@ -5,6 +5,7 @@ import os.path as osp
 import bilby
 import pystan as ps
 import pickle
+import scipy.optimize as so
 import getdist as gd
 import getdist.plots as gdp
 
@@ -107,6 +108,23 @@ def pom_opt_gmm(x_samples, weights, n_comp_min=2, n_comp_max=10, \
     i_best = np.argmin(best_scores)
     return best_models[i_best]
 
+def poly_surf(coords, *pars):
+    return pars[0] + \
+           pars[1] * coords[0, :] + \
+           pars[2] * coords[1, :] + \
+           pars[3] * coords[0, :] ** 2 + \
+           pars[4] * coords[1, :] ** 2 + \
+           pars[5] * coords[0, :] * coords[1, :] + \
+           pars[6] * coords[0, :] ** 3 + \
+           pars[7] * coords[1, :] ** 3 + \
+           pars[8] * coords[1, :] * coords[0, :] ** 2 + \
+           pars[9] * coords[0, :] * coords[1, :] ** 2 + \
+           pars[10] * coords[0, :] ** 4 + \
+           pars[11] * coords[1, :] ** 4 + \
+           pars[12] * coords[1, :] * coords[0, :] ** 3 + \
+           pars[13] * coords[0, :] * coords[1, :] ** 3 + \
+           pars[14] * (coords[0, :] * coords[1, :]) ** 2
+
 # plot settings
 lw = 1.5
 mp.rc('font', family='serif', size=10)
@@ -150,7 +168,7 @@ uniform_bh_masses = True
 uniform_ns_masses = True
 low_metals = True
 broad_bh_spins = True
-seobnr_waveform = True
+seobnr_waveform = False
 if seobnr_waveform:
     waveform_approximant = 'SEOBNRv4_ROM_NRTidalv2_NSBH'
     aligned_spins = True
@@ -162,11 +180,14 @@ datdir = 'data'
 outdir = 'outdir'
 fit_d_dists = False
 kde_fit = False
-bw_grid = np.logspace(-0.5, 3.5, 10)
-#bw_grid = np.logspace(-0.5, 3.5, 100)
+bw_grid = np.logspace(-0.5, 3.5, 10) # 100)
 test_stan = False
 recompile = False
 constrain = True
+fixed_n_mrg = False
+sample_rate = True
+n_bar_det_post = True
+rate = 6.1e-7
 
 # BH mass and spin prior limits
 if uniform_bh_masses:
@@ -223,11 +244,83 @@ if aligned_spins:
 base_label = label_str.format(duration, minimum_frequency, \
                               reference_frequency)
 
+# fit n_bar_det as function of sampled parameters with a 2D
+# polynomial. need to feed curve_fit coordinates in 2 * 
+# n_grid ** 2 array and values to fit in n_grid ** 2 array; this 
+# requires stacking and reshaping the compiled inputs (which 
+# consist of multiple runs with the same parameters)
+data_file = osp.join(datdir, base_label + '_n_det.txt')
+data = np.genfromtxt(data_file, delimiter=',', names=True, dtype=None)
+n_grid = np.max(data['i_h_0']) + 1
+n_runs = len(data['i_job'])
+coords = np.zeros((2, n_grid ** 2))
+counts = np.zeros(n_grid ** 2)
+for i in range(n_runs):
+    i_comp = data['i_h_0'][i] * n_grid + data['i_q_0'][i]
+    coords[0, i_comp] = data['h_0'][i]
+    coords[1, i_comp] = data['q_0'][i]
+    counts[i_comp] += data['n_det_rem'][i]
+popt, pcov = so.curve_fit(poly_surf, coords, counts, \
+                          p0=np.zeros(15))
+n_bar_det = np.reshape(counts, (n_grid, n_grid))
+h_0_min = np.min(coords[0, :])
+h_0_max = np.max(coords[0, :])
+q_0_min = np.min(coords[1, :])
+q_0_max = np.max(coords[1, :])
+
+# generate the fit to n_bar_det we've found and plot
+coord = np.zeros((2, 1))
+counts_fit = np.zeros(n_grid ** 2)
+for i in range(n_grid ** 2):
+    coord[0, 0] = coords[0, i]
+    coord[1, 0] = coords[1, i]
+    counts_fit[i] = poly_surf(coord, *popt)
+n_bar_det_fit = np.reshape(counts_fit, (n_grid, n_grid))
+fig, axes = mp.subplots(1, 3, figsize=(15, 5))
+im0 = axes[0].imshow(n_bar_det.T, \
+               extent=[h_0_min, h_0_max, q_0_min, q_0_max], \
+               interpolation='nearest', cmap='plasma', \
+               vmin=np.min(n_bar_det), vmax=np.max(n_bar_det))
+axes[1].imshow(n_bar_det_fit.T, \
+               extent=[h_0_min, h_0_max, q_0_min, q_0_max], \
+               interpolation='nearest', cmap='plasma', \
+               vmin=np.min(n_bar_det), vmax=np.max(n_bar_det))
+im2 = axes[2].imshow((n_bar_det.T - n_bar_det_fit.T) / n_bar_det.T, \
+               extent=[h_0_min, h_0_max, q_0_min, q_0_max], \
+               interpolation='nearest', cmap='plasma')
+fig.subplots_adjust(right=0.9)
+fig.subplots_adjust(left=0.1)
+cbar0_ax = fig.add_axes([0.05, 0.15, 0.025, 0.7])
+cbar2_ax = fig.add_axes([0.925, 0.15, 0.025, 0.7])
+fig.colorbar(im0, cax=cbar0_ax)
+fig.colorbar(im2, cax=cbar2_ax)
+cbar0_ax.yaxis.set_ticks_position('left')
+axes[0].set_title('Input')
+axes[1].set_title('Fit')
+axes[2].set_title('Fractional Difference')
+for i in range(3):
+    axes[i].set_aspect((h_0_max - h_0_min) / \
+                       (q_0_max - q_0_min))
+    axes[i].set_xlabel(r'$H_0$')
+    axes[i].set_ylabel(r'$q_0$')
+    axes[i].grid(False)
+cbar0_ax.grid(False)
+cbar2_ax.grid(False)
+mp.savefig(datdir + '/' + base_label + '_n_bar_det_fit.pdf', \
+           bbox_inches='tight')
+mp.close()
+
 # read injections from file
 par_file = base_label + '.txt'
 raw_pars = np.genfromtxt(datdir + '/' + par_file, \
                          dtype=None, names=True, delimiter=',', \
                          encoding=None)
+
+
+raw_pars['snr'][6186] = 0.0
+
+
+
 det = raw_pars['snr'] >= snr_thresh
 if remnants_only:
     det = np.logical_and(det, raw_pars['remnant_mass'] > min_remnant_mass)
@@ -240,6 +333,15 @@ target_snrs = snrs[i_sort]
 target_ids = ids[i_sort]
 target_redshifts = raw_pars['redshift'][i_sort]
 n_targets = len(target_ids)
+
+# ensure n_bar_det is correctly renormalized to account for 
+# different rates and sample sizes: we want the number of 
+# expected detections to match the sample size at the fiducial
+# cosmology
+coord[:, 0] = [h_0, q_0]
+renorm = poly_surf(coord, *popt)
+popt *= float(n_targets) / renorm
+n_bar_det_fid = poly_surf(coord, *popt)
 
 # optionally test Stan sampling of distance distributions
 if test_stan:
@@ -559,9 +661,6 @@ if fit_d_dists:
                                               d_comp_means[i][n], \
                                               d_comp_stds[i][n]))
 
-# @TODO: fudged n_bar
-n_bar_det_coeffs = np.array([n_targets] + [0] * 14)
-
 # bit of book-keeping of KDE outputs
 n_comp_max = np.max(n_comp)
 d_weights = np.zeros((n_comp_max, n_targets))
@@ -574,14 +673,20 @@ for i in range(n_targets):
         d_stds[0: n_comp[i], i] = d_bws[i] * np.ones(n_comp[i])
     else:
         d_stds[0: n_comp[i], i] = d_comp_stds[i]
-stan_data = {'fixed_n_mrg': 1, 'n_mrg': n_targets, \
+stan_data = {'fixed_n_mrg': int(fixed_n_mrg), \
+             'sample_rate': int(sample_rate), 'n_mrg': n_targets, \
              'n_cmp_max': n_comp_max, 'n_cmp': n_comp, \
              'obs_d_weights': d_weights, 'obs_d_means': d_means, \
              'obs_d_stds': d_stds, 'obs_v_pec': v_pec_obs, \
              'obs_z': z_obs, 'sig_v_pec': sig_v_pec, \
              'sig_obs_v_pec': sig_v_pec_obs, 'sig_z': sig_z_obs, \
-             'z_max': z_max, 'n_coeffs': 15, \
-             'n_bar_det_coeffs': n_bar_det_coeffs}
+             'z_max': z_max, 'n_coeffs': len(popt), \
+             'n_bar_det_coeffs': popt, \
+             'rate_fid': rate * 1.0e9}
+if sample_rate:
+    stan_pars = ['h_0', 'q_0', 'rate', 'n_bar_det']
+else:
+    stan_pars = ['h_0', 'q_0', 'n_bar_det']
 
 # sample
 if recompile:
@@ -597,8 +702,7 @@ else:
               '(nsbh_cosmo.pkl) ' + \
               'not found. Please set recompile = True')
         exit()
-#fit = stan_model.sampling(data=stan_data, iter=1000)
-fit = stan_model.sampling(data=stan_data, iter=10000)
+fit = stan_model.sampling(data=stan_data, iter=10000, pars=stan_pars)
 #fit = stan_model.sampling(data=stan_data, iter=10000, \
 #                          control={'adapt_delta':0.9})
 print(fit)
@@ -617,8 +721,20 @@ for i in range(0, n_chains):
 pars = ['h_0', 'q_0']
 par_names = ['H_0', 'q_0']
 par_vals = [h_0, q_0]
-gd_samples = gd.MCSamples(samples=samples[:, 0: 2], names=pars, 
-                          labels=par_names, ranges={})
+par_ranges={}
+if sample_rate:
+    pars.append('gamma')
+    par_names.append(r'\Gamma')
+    par_vals.append(rate * 1.0e9)
+    #par_ranges['gamma'] = (0.0, None)
+    par_ranges['gamma'] = (10.0, 1000.0)
+if n_bar_det_post:
+    pars.append('n_bar_det')
+    par_names.append(r'\bar{N}_{\rm det}')
+    par_vals.append(n_bar_det_fid)
+n_pars = len(pars)
+gd_samples = gd.MCSamples(samples=samples[:, 0: n_pars], names=pars, 
+                          labels=par_names, ranges=par_ranges)
 g = gdp.getSubplotPlotter()
 g.settings.lw_contour = lw
 g.settings.axes_fontsize = 8
@@ -626,7 +742,7 @@ g.triangle_plot(gd_samples, pars, filled = True, \
                 line_args = {'lw': lw, 'color': 'C0'}, \
                 contour_args = {'lws': [lw, lw]}, \
                 colors = ['C0'])
-for i in range(0, len(pars)):
+for i in range(0, n_pars):
     sp_title = '$' + gd_samples.getInlineLatex(pars[i], \
                                                limit=1) + '$'
     g.subplots[i, i].set_title(sp_title, fontsize=12)
@@ -636,22 +752,15 @@ for i in range(0, len(pars)):
     for ax in g.subplots[i:, i]:
         ax.axvline(par_vals[i], color='gray', ls='--')
         ax.grid(False)
+        ax.tick_params(axis='both', labelsize=10)
 plot_file = outdir + '/' + base_label
 if kde_fit:
     plot_file = plot_file + '_kde_fits'
 else:
     plot_file = plot_file + '_gmm_fits'
+if fixed_n_mrg:
+    plot_file = plot_file + '_fixed_n_mrg'
+if sample_rate:
+    plot_file = plot_file + '_rate'
 mp.savefig(plot_file + '_cosmo_post_triangle_plot.pdf', bbox_inches='tight')
 
-
-exit()
-
-
-# @TODO
-# 1) DONE: tidy plot name
-# 2) DONE: add true and observed peculiar velocities
-# 3) DONE: recall true redshift and add noise
-# 4) DONE: save true redshifts... will have to rerun everything FFS. just back out for now?
-# 5) fix up n_bar
-# 6) try sampling for five or ten mergers
-# 7) rate sampling!

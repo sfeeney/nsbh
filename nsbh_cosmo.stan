@@ -12,6 +12,7 @@ functions{
 }
 data {
     int<lower=0, upper=1> fixed_n_mrg;      // assume sample size known
+    int<lower=0, upper=1> sample_rate;      // sample merger rate
     int<lower=1> n_mrg;                     // total number of mergers
     int<lower=1> n_cmp_max;                 // max number of KDE/GMM components in all distance likelihoods
     int<lower=1> n_cmp[n_mrg];              // number of KDE/GMM components in each distance likelihood
@@ -26,6 +27,7 @@ data {
     real z_max;                             // maximum prior redshift
     int<lower=0> n_coeffs;                  // number of coefficients of polynomial fit to \bar{N}(H_0,q_0)
     vector[n_coeffs] n_bar_det_coeffs;      // coefficients of polynomial fit to \bar{N}(H_0,q_0)
+    real rate_fid;                          // fiducial rate at which \bar{N}(H_0,q_0) fit is calculated
 }
 transformed data {
     real c;                                 // c in km/s
@@ -36,6 +38,8 @@ transformed data {
 parameters {
     real<lower=50.0, upper=90.0> h_0;
     real<lower=-2.0, upper=1.0> q_0;
+    //real<lower=0.0> rate[sample_rate];
+    real<lower=10.0, upper=1000.0> rate[sample_rate];
     vector<lower=0.0, upper=z_max>[n_mrg] true_z_cos;
     vector[n_mrg] true_v_pec;
 }
@@ -70,6 +74,11 @@ transformed parameters {
     if (is_nan(n_bar_det)) {
         print("N BAD! ", n_bar_det, " ", h_0, " ", q_0);
     }
+
+    // optionally modulate by sampled rate
+    if (sample_rate && !fixed_n_mrg) {
+        n_bar_det *= rate[1] / rate_fid;
+    }
     
 }
 model {
@@ -78,6 +87,10 @@ model {
     h_0 ~ normal(70.0, 20.0);
     q_0 ~ normal(-0.5, 0.5);
     true_v_pec ~ normal(0.0, sig_v_pec);
+    if (sample_rate) {
+        //rate ~ normal(rate_fid, rate_fid * 0.5);
+        target += -log(rate[1]);
+    }
 
     // pick order-appropriate volume element. NB: as addition acts 
     // per vector element, the statement below (correctly) applies a 
@@ -93,6 +106,9 @@ model {
         target += -n_mrg * log(n_bar_det);
     } else {
         target += -n_bar_det;
+        if (sample_rate) {
+            target += n_mrg * log(rate[1]);
+        }
     }
 
     // EM likelihoods

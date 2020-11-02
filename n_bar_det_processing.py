@@ -3,6 +3,7 @@ import matplotlib.pyplot as mp
 import matplotlib.cm as mpcm
 import mpl_toolkits.axes_grid1 as mpag
 import os.path as osp
+import pickle
 
 def d2z(d, h_0, q_0, order=3):
 
@@ -48,6 +49,7 @@ to_store = ['simulation_id', 'mass1', 'mass2', 'spin1x', 'spin1y', 'spin1z', \
             'geocent_end_time', 'geocent_end_time_ns']
 n_to_store = len(to_store)
 use_lal = False
+min_ejecta_mass = 0.01
 sample_z = True
 redshift_rate = True
 uniform_bh_masses = True
@@ -61,7 +63,7 @@ if seobnr_waveform:
 else:
     waveform_approximant = 'IMRPhenomPv2_NRTidal'
     aligned_spins = False
-cf_bilby = False
+store_all_selection = True
 
 # BH mass and spin dists
 if uniform_bh_masses:
@@ -133,7 +135,7 @@ n_procs = 96
 n_runs = 0
 
 # do we need to compile multiple files?
-compile = False
+compile = True
 if compile:
 
     # read in files
@@ -256,4 +258,45 @@ for i in range(5):
 fig.delaxes(axes[1, 0])
 fig.subplots_adjust(wspace=0.8, hspace=0.4)
 fig.savefig(osp.join(outdir, label + '_n_det.pdf'), bbox_inches='tight')
+mp.close(fig)
 
+# now plot redshifts vs SNR for detected events
+if store_all_selection:
+    fig, axes = mp.subplots(nrows=5, ncols=5, figsize=(10, 10), \
+                            sharex=True, sharey=True)
+    for i in range(n_procs):
+
+        # read in selection file
+        fname = 'data/' + label + \
+                '_n_det_selection_proc_{:d}_of_{:d}.pkl'.format(i, n_procs)
+        with open(fname, 'rb') as f:
+            selection = pickle.load(f)
+
+        # loop through contents, adding to plot
+        for sel in selection:
+            redshifts = sel[3]
+            snrs = sel[4]
+            ejecta_masses = sel[5]
+            det = snrs > snr_thresh
+            has_ejecta = ejecta_masses > min_ejecta_mass
+            det_ej = np.logical_and(has_ejecta, det)
+            #axes[sel[2], sel[1]].plot(redshifts[det], snrs[det], \
+            #                          '.', color='C0')
+            axes[sel[2], sel[1]].plot(redshifts[det_ej], snrs[det_ej], \
+                                      '.', color='C0')
+
+    # finish plot
+    for i in range(n_grid):
+        axes[4, i].set_xlabel('$z$')
+        axes[i, 0].set_ylabel(r'$\rho$')
+        for j in range(n_grid):
+            axes[i, j].axhline(snr_thresh, ls='--', color='C1')
+            par_label = r'$H_0=' + x_tick_labels[j] + '$'
+            axes[i, j].text(0.95, 0.95, par_label, va='top', ha='right', \
+                            transform=axes[i, j].transAxes)
+            par_label = r'$q_0=' + y_tick_labels[i] + '$'
+            axes[i, j].text(0.95, 0.85, par_label, va='top', ha='right', \
+                            transform=axes[i, j].transAxes)
+    fig.subplots_adjust(wspace=0.0, hspace=0.0)
+    fig.savefig(osp.join(outdir, label + '_n_det_snrs.pdf'), \
+                bbox_inches='tight')
