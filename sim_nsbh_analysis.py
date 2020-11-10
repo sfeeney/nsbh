@@ -90,7 +90,11 @@ if min_network:
     ifo_list = ['H1', 'L1', 'V1', 'K1-']
 else:
     ifo_list = ['H1+', 'L1+', 'V1+', 'K1+', 'A1']
-n_live = 1000
+use_polychord = True
+if use_polychord:
+    n_live = 1000 # 500
+else:
+    n_live = 1000
 zero_spins = False
 remnants_only = True
 min_remnant_mass = 0.01
@@ -102,7 +106,7 @@ uniform_bh_masses = True
 uniform_ns_masses = True
 low_metals = True
 broad_bh_spins = True
-seobnr_waveform = True
+seobnr_waveform = False
 if seobnr_waveform:
     waveform_approximant = 'SEOBNRv4_ROM_NRTidalv2_NSBH'
     aligned_spins = True
@@ -223,6 +227,7 @@ if tight_loc:
 
 # loop over assignments
 for j in range(len(job_list)):
+#for j in range(84, 85):
 
     # find next injection
     # entries are simulation_id, mass1, mass2, spin1x, spin1y, spin1z, 
@@ -304,6 +309,8 @@ for j in range(len(job_list)):
     # Specify the output directory and the name of the simulation.
     outdir = 'outdir'
     label = base_label + '_inj_{:d}'.format(inj_id)
+    if use_polychord:
+        label = 'pc_' + label
     if zero_spins:
         label += '_zero_spins'
     if tight_loc:
@@ -376,7 +383,8 @@ for j in range(len(job_list)):
     priors = bilby.gw.prior.BNSPriorDict(aligned_spin=aligned_spins)
     priors.pop('mass_1')
     priors.pop('mass_2')
-    if uniform_bh_masses and uniform_ns_masses:
+    #if uniform_bh_masses and uniform_ns_masses:
+    if False:
         priors.pop('mass_ratio')
         priors['mass_1'] = \
             bilby.prior.Uniform(name='mass_1', minimum=m_min_bh, \
@@ -400,6 +408,8 @@ for j in range(len(job_list)):
                                                    latex_label='$q$', \
                                                    minimum=q_inv_min, \
                                                    maximum=q_inv_max)
+        if waveform_approximant == 'SEOBNRv4_ROM_NRTidalv2_NSBH':
+            priors['mass_2'] = bilby.prior.Constraint(name='mass_2', minimum=0.5, maximum=3.0)
     priors['geocent_time'] = \
         bilby.core.prior.Uniform(minimum=injection_parameters['geocent_time'] - 0.1, \
                                  maximum=injection_parameters['geocent_time'] + 0.1, \
@@ -462,11 +472,16 @@ for j in range(len(job_list)):
     # approach, searching the full parameter space.
     # The conversion function will determine the distance, phase and coalescence
     # time posteriors in post processing.
-    result = bilby.run_sampler(likelihood=likelihood, priors=priors, \
-                               sampler='dynesty', npoints=n_live, \
-                               injection_parameters=injection_parameters, \
-                               outdir=outdir, label=label, \
-                               conversion_function=bilby.gw.conversion.generate_all_bns_parameters)
-
-    # Make a corner plot.
-    result.plot_corner()
+    if use_polychord:
+        result = bilby.run_sampler(likelihood=likelihood, priors=priors, \
+                                   sampler='pypolychord', nlive=n_live, \
+                                   injection_parameters=injection_parameters, \
+                                   outdir=outdir, label=label, read_resume=False, \
+                                   conversion_function=bilby.gw.conversion.generate_all_bns_parameters)
+    else:
+        result = bilby.run_sampler(likelihood=likelihood, priors=priors, \
+                                   sampler='dynesty', npoints=n_live, \
+                                   injection_parameters=injection_parameters, \
+                                   outdir=outdir, label=label, \
+                                   conversion_function=bilby.gw.conversion.generate_all_bns_parameters)
+        result.plot_corner()
