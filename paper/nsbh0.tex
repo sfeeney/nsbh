@@ -178,12 +178,20 @@ miscellaneous --- catalogs --- surveys}
 
 \section{Introduction} \label{sec:intro}
 
-Other restrictions:
-\begin{enumerate}
-	\item Main Text -- no more than 3500 words (not including appendices or other supplementary material)
-	\item Figures and Tables -- no more than 5 combined figures (each limited to 9 panels) and tables, e.g. 3 figures and 2 tables.
-	\item References -- no more than 50 references
-\end{enumerate}
+%Restrictions:
+%\begin{enumerate}
+%	\item Main Text -- no more than 3500 words (not including appendices or other supplementary material)
+%	\item Figures and Tables -- no more than 5 combined figures (each limited to 9 panels) and tables, e.g. 3 figures and 2 tables.
+%	\item References -- no more than 50 references
+%\end{enumerate}
+
+The current expansion rate of the Universe -- the Hubble constant, or $H_0$ -- is at the center of a serious cosmological controversy. Measured directly in the local Universe by the SH0ES team's Cepheid-supernova distance ladder, it is found to be blah. Estimated in a cosmological-model-dependent fashion from the Planck satellite's observations of the cosmic microwave background's temperature and polarization anisotropies, it is found to be wah. This is a big ol' discrepancy.
+
+There are two potential explanations here. The most exciting of the two derives from the model-dependence of the CMB constraint: could this discrepancy be due to novel physics missing from the $\Lambda$CDM model used in the Planck analysis? This has, understandably, let to a great amount of activity among theorists [cites], though consensus on a compelling theoretical explanation is yet to be reached. Arguably the strongest (least weak?) evidence points at modifications to the expansion history in the decade of scale factor preceding recombination [EDE, Knox\& Millea] (though see [hill etc.] for recent contradictory evidence).
+
+The second, more prosaic explanation, is that there are undiagnosed analysis issues in the CMB or distance ladder data. There are two approaches here, both of which have been heavily undertaken by the field: search for undiagnosed systematic errors in the constituent datasets, and harness complementary independent datasets to verify the conclusions of the low- and high-redshift universes. On the systematics side, there have been loads of investigations into the Cepheid-SN distance ladder [Cardona, Follin, Feeney, Rigault and responses] and the CMB [Spergel, more?], none of which have found incontrovertible evidence warranting a change of conclusions. On the new data side of things, the high-z Universe is pretty much sorted: the inverse distance ladder agrees with the CMB very well, which is particularly convincing given entirely CMB-independent formulations. Low-z is a little less clear? Various distance ladders (MIRAs, tRGB controversy) and strong lensing (though again, controversy) generally back up the Cepheids. Clear that a completely independent measurement with same precision would be enormously helpful.
+
+Here's where GWs come in. Combining GW detections, which yield distance estimates, with EM counterparts, it's possible to estimate $H_0$ assuming general relativity alone [Schutz, Holz, Samaya]. With the advent of detections from LIGO and Virgo, starting to do this, both directly in the one case where the counterpart is known (LVC) and statistically in the case where it is not (many). Prime candidate here is BNS, as counterparts expected and things much more precise [us x 2, chen]. BBH can also be useful (see recent papers on blah, but note association is not firm, and model-dependent). What hasn't been researched so much is NSBH. Discuss [Chen Vitale], and motivate what we're doing here. This is the focus of this paper.
 
 
 \section{Methods} \label{sec:methods}
@@ -213,8 +221,8 @@ Some plots, which make the acknowledgments go nuts.
 \end{figure*}
 
 \begin{figure*}[ht!]
-\plotone{{nsbh_pop_H1+_L1+_V1+_K1+_A1_d_32.0_mf_20.0_rf_14.0_dndz_rr_ubhmp_2.5_40.0_unsmp_1.0_2.4_bbhsp_seobnr_aligned_imp_sample_weighted_samples_spin_z_mass_dis_inc_wf_comp}.pdf}
-\caption{Posterior distributions for mergers simulated using IMRPhenom (grey) and SEOBNR (red) waveforms. Each column depicts the distance, inclination, and black-hole mass and $z$-spin magnitude posteriors for a merger with true parameters indicated by black plus symbols (crosses where the true $z$-spin is negative). Shown are: (left) the merger with the highest signal-to-noise, (right) the two IMRPhenom mergers whose black-hole spins are closest to being aligned, and (center) two further mergers indicating the range of posteriors observed. \label{fig:waveforms}}
+\plotone{{nsbh_pop_H1+_L1+_V1+_K1+_A1_d_32.0_mf_20.0_rf_14.0_dndz_rr_ubhmp_2.5_40.0_unsmp_1.0_2.4_bbhsp_aligned_imp_sample_weighted_samples_spin_z_mass_dis_inc_wf_comp}.pdf}
+\caption{Posterior distributions for mergers simulated using the IMRPhenom waveform with precessing (grey filled) and aligned (dark red dashed) spins, and the SEOBNR waveform (red) with aligned spins. Each column depicts the distance, inclination, and black-hole mass and $z$-spin magnitude posteriors for a merger with true parameters indicated by black plus symbols (crosses where the true $z$-spin is negative). Shown are: (left) the merger with the highest signal-to-noise, (right) the two IMRPhenom mergers whose black-hole spins are closest to being aligned, and (center) two further mergers indicating the range of posteriors observed. \label{fig:waveforms}}
 \end{figure*}
 
 \begin{figure*}[ht!]
