@@ -93,6 +93,50 @@
 \newcommand\aastex{AAS\TeX}
 \newcommand\latex{La\TeX}
 
+
+
+%\newcommand{\dataset}{\vect{d}}
+\newcommand{\msun}{M_\odot}
+\newcommand{\hubble}{\ensuremath{H_0}}
+\newcommand{\hubbleest}{\ensuremath{\hat{H}_0}}
+\newcommand{\decel}{\ensuremath{q_0}}
+\newcommand{\jerk}{\ensuremath{j_0}}
+\newcommand{\dl}{\ensuremath{D}}
+\newcommand{\vobs}{\ensuremath{\hat{v}}}
+\newcommand{\vobss}{\ensuremath{\hat{\vect{v}}}}
+\newcommand{\zobs}{\ensuremath{\hat{z}}}
+\newcommand{\zmax}{\ensuremath{z_{\rm max}}}
+\newcommand{\prob}{\ensuremath{{\rm P}}}
+\newcommand{\normal}{{\rm{N}}}
+\newcommand{\sels}{\vect{S}}
+\newcommand{\dgw}{\hat{h}}
+\newcommand{\inc}{\iota}
+\newcommand{\nexp}{\bar{N}}
+\newcommand{\abh}{a_{\rm BH}}
+\newcommand{\ans}{a_{\rm NS}}
+\newcommand{\mbh}{m_{\rm BH}}
+\newcommand{\mns}{m_{\rm NS}}
+\newcommand{\mchirp}{{\cal{M}}}
+\newcommand{\strain}{h}
+\newcommand{\strainobs}{\hat{h}}
+\newcommand{\sigmav}{\sigma_{||}}
+\newcommand{\gwpoppar}{\beta}
+\newcommand{\uniform}{{\rm U}}
+\newcommand{\tobs}{t_{\rm obs}}
+\newcommand{\fobs}{f_{\rm obs}}
+\newcommand{\rate}{\Gamma}
+\newcommand{\step}{\Theta}
+\newcommand{\snr}{\rho}
+\newcommand{\kmsmpc}{\ensuremath{{\rm km\,s^{-1}\,Mpc^{-1}}}}
+\newcommand{\kms}{\ensuremath{{\rm km\,s^{-1}}}}
+\newcommand{\mpc}{\ensuremath{{\rm Mpc}}}
+\newcommand{\gpc}{\ensuremath{{\rm Gpc}}}
+\newcommand{\yr}{\ensuremath{{\rm yr}}}
+\newcommand{\yrgpc}{\ensuremath{{\rm yr^{-1}\,Gpc^{-3}}}}
+\newcommand{\planck}{{\it Planck}}
+\newcommand{\plancks}{{\it Planck{\rm 's}}}
+\newcommand{\lcdm}{$\Lambda$CDM}
+
 %% Reintroduced the \received and \accepted commands from AASTeX v5.2
 %\received{June 1, 2019}
 %\revised{January 10, 2019}
@@ -196,15 +240,30 @@ Here's where GWs come in. Combining GW detections, which yield distance estimate
 
 \section{Simulations} \label{sec:sims}
 
-In this work we simulate the results of a network of an Nth generation network, consisting of LIGO A+, Virgo something, KAGRA and LIGO India [cite noise curves] observing for five years, with a 50\% duty cycle. We assume a constant rest-frame  NSBH merger rate of 610 per year per cubic Gpc, and require a network signal-to-noise of at least 12 for detection.
+In this work we simulate the results of an Nth generation network, consisting of LIGO A+, Virgo something, KAGRA and LIGO India [cite noise curves] observing for $\tobs = 5 \yr$ with a 50\% duty cycle, $\fobs$. We assume a constant rest-frame  NSBH merger rate of 610 \yrgpc\ (matching the 90\% upper limit of~\cite{Ligo:2018}), and ground truth expansion parameters matching~\cite{Planck_VI:2018}, with $\hubble=67.36\,\kmsmpc$ and $\decel=-0.527$.
 
-We generate parameters from these distributions. We then take these parameters and calculate the ejecta mass (note this assumes aligned spins). Set a maximum redshift of blah (which we checked is sufficient). We assume that the GW detectors operate in concert with an electromagnetic followup program capable of detecting all mergers with ejecta mass greater than 0.01 $M_\odot$; the selection function is therefore not entirely based on the gravitational wave signal. To determine the impact of different physical effects on our results, we choose to simulate using two waveform approximants: IMRPhenom and SEOBNR (hereafter blah and wah). One does this, the other does that. As the SEOBNR waveform requires aligned spins, we choose to zero the x and y spin components (as opposed to, for example, sampling from a uniform spin z distribution). This feels like a better approximation to spins becoming aligned over time. Remember redshift and peculiar velocity distributions.
+Each simulation starts by drawing the total number of mergers from a Poisson distribution with mean $\lambda = \fobs \, \tobs \, V \, \Gamma $, where $V$ is the redshifted volume
+\begin{equation}
+V = \int_0^{\zmax} \frac{dV}{dz} \frac{dz}{1+z}
+\end{equation}
+and the co-moving volume element is
+\begin{align}
+\frac{dV}{dz} \simeq & 4\pi \frac{c^3 z^2}{\hubble^3} \\
+& \left[1 - 2 \left(1 + \decel \right) z + \frac{5}{12} \left(7 + 14 \decel - 2 \jerk + 9 \decel^2 \right) z^2 \right] \nonumber
+\end{align}
+to third order in expansion parameters (hereafter, we assume the jerk $j_0 = 1$). The upper limit to the integral, $\zmax$, must be chosen such that there is a negligible chance of a merger at $\zmax$ being detected by the relevant experiments: we find that $\zmax=0.44$ suffices for our setting. For our fiducial parameter set, $\lambda = 25160$; the particular Poisson draw we obtain yields a total of 25241 mergers. For each merger, we draw a cosmological redshift from the distribution
+\begin{equation}
+\prob(z) \propto \step(z) \step(\zmax-z) \frac{1}{1+z} \frac{dV}{dz}
+\end{equation}
+(where $\step$ denotes the Heaviside step function), along with an isotropically distributed angular sky position, inclination angle, phase and polarization angle. We draw uniformly distributed BH and NS masses from the $\prob(\mbh) = \uniform(2.5\msun, 40\msun)$ [following blah] and  $\prob(\mns) = \uniform(1\msun, 2.42\msun)$ [following wah], and BH and NS spin magnitudes from the uniform distributions $\prob(\abh) = \uniform(0, 0.99)$ and  $\prob(\ans) = \uniform(0, 0.05)$, assuming they are oriented isotropically. We calculate ejecta masses following~\cite{Foucart_etal:2018}, noting that this assumes {\bf which} NS equation of state and has been calibrated on aligned and anti-aligned spin simulations only {\bf [is this last bit right?]}. Finally, we generate peculiar velocitys for each merger from the Gaussian distribution $\prob(v) = \normal(0\,\kms,500\,\kms)$.
 
-When simulating, we generate blah raw mergers, wah of which are detected in GWs for IMRPhenom/SEOBNR, and rah of which have sufficient ejecta to be detected in EM. X of these events are common to the two samples. The simulated BH masses and spin magnitudes of the SEOBNR population are shown in Figure~\ref{fig:pops} {\bf [relabel to undetected in GW/EM?]}. Here, mergers too weak to be detected in GW are displayed as hollow circles, and GW-detected mergers as filled circles. Mergers with ejecta mass below/above our EM detection threshold are colored purple/blue, respectively. Overlaid are three disruption lines, indicating the BH spins at which the ejecta mass reaches our minimum detection threshold for NS masses equal to the minimum (dot-dashed), mean (solid) and maximum (dashed) of their distribution. The plot for the IMRPhenom simulations is very similar, but with mergers filling the full range of the y-axis (as the x and y spins are non-zero).
+With the ground truth parameters in hand, we generate the data for each merger and apply our selection criteria.  To determine the impact of different physical effects on our results, we choose to simulate using two waveform approximants: IMRPhenomPv2\_NRTidal and SEOBNRv4\_ROM\_NRTidalv2\_NSBH (hereafter blah and wah). One does this, the other does that. As the SEOBNR waveform requires aligned spins, we choose to zero the x and y spin components (as opposed to, for example, sampling from a uniform spin z distribution). This feels like a better approximation to spins becoming aligned over time. For each waveform, we generate 32 s segments of GW data per merger, using a frequency range of 20-2048 Hz and identical random seeds, and consider it detected if the network signal-to-noise ratio is at least 12. We assume that the GW detectors operate in concert with an EM followup program capable of detecting all mergers with ejecta mass greater than 0.01 $M_\odot$; as a result, the selection function is not entirely based on the GW signal. Finally, we generate noisy redshift and peculiar estimates by drawing from $\prob(\zobs|z)=\normal(z,0.001)$ and $\prob(\vobs|v)=\normal(v,200\,\kms)$, respectively.
+
+Of the 25241 raw mergers, 2477 (2954) are detected in GWs using the IMRPhenom (SEOBNR) waveform, 99 (75) of which have sufficient ejecta to be detected in EM {\bf [Why more GW det in SEOB but fewer EM det?]}; 62 of these events appear in both samples. The simulated BH masses and spin magnitudes of the SEOBNR population are shown in Figure~\ref{fig:pops} {\bf [relabel to undetected in GW/EM?]}. Here, mergers whose GW SNRs fail (exceed) our detection threshold are displayed as hollow (filled) circles, and mergers with ejecta mass below (above) our EM detection threshold are colored purple (blue). Overlaid are three disruption lines, indicating the BH spins at which the ejecta mass reaches our minimum detection threshold for NS masses equal to the minimum (dot-dashed), mean (solid) and maximum (dashed) of their distribution. The plot for the IMRPhenom simulations is very similar, but with mergers filling the full range of the y-axis (as the x and y spins are non-zero).
 
 \begin{figure*}[ht!]
 \plotone{{pc_nsbh_pop_H1+_L1+_V1+_K1+_A1_d_32.0_mf_20.0_rf_14.0_dndz_rr_ubhmp_2.5_40.0_unsmp_1.0_2.4_bbhsp_seobnr_aligned_imp_sample_weighted_samples_disruption_line_in_out_comp}.pdf}
-\caption{Blah.\label{fig:pops}}
+\caption{Ground-truth (left) and inferred (right) properties of simulated NSBH binaries. (Left) Most systems are not detected in GWs (empty circles). Those with low BH mass and high BH spin are most likely to produce ejecta and thus EM emission (blue circles). (Right) Posterior inference for these systems, clearly indicating the preferred region of parameter space.\label{fig:pops}}
 \end{figure*}
 
 \section{Methods} \label{sec:methods}
@@ -228,7 +287,7 @@ We assume blah priors on cosmological and a population parameters, and the same 
 
 We perform this inference in two parts, using two sampling methods. We first process each merger individually in order to obtain the marginalized likelihood Eq.~\ref{eq:marge_like}. We use bilby wrapped around pypolychord for these marginalized likelihoods, taking 1000 live points at a time and using bilby's marginalize\_phase, time and distance settings. Convergence is greatly improved by sampling chirp masses and mass ratios instead of component masses: we use interim priors that are uniform in chirp mass and mass ratio over the ranges permitted by our component-mass extrema, before importance-sampling pypolychord's outputs to reinstate our desired uniform component-mass priors. Each N-dimensional (M-dimensional SEOBNR) sampling run takes 1-2 weeks (4-7 days) to converge on a single WAH CPU.
 
-Given the marginalized GW likelihoods, we use no-u-turn sampling as implemented by the pystan package to infer the cosmological ($H_0$, $q_0$) and population parameters ($\Gamma$). To use pystan, we must be able to sample all parameters from analytic distributions. We therefore perform a Gaussian Mixture Model fit, as implemented by the pomegranate Python package, to each merger's marginalized distance likelihood. We fit using an integer grid of 2-10 mixture components, repeating the fit 10 times at each grid point and using the Akaike Information Criterion to find a robust optimal GMM fit for each likelihood. To sample, we must also evaluate Nbardet, the expected number of detected mergers, at each sampled value of the cosmological and population parameters. We do so by calculating Nbardet on a 5x5 grid of $H_0$ and $q_0$ assuming our fiducial rate value, and interpolating the results using a 2D fourth-order interpolant; the dependence on the sampled rate is captured by multiplying the interpolation coefficients by $\Gamma/\Gamma_{\rm fid}$. The resulting 153/193-dimensional pystan inference runs take less than a minute to generate 20,000 well converged samples on a 3.1 GHz Intel Core i7 CPU.
+Given the marginalized GW likelihoods, we use no-u-turn sampling as implemented by the pystan package to infer the cosmological ($H_0$, $q_0$) and population parameters ($\Gamma$). To use pystan, we must be able to sample all parameters from analytic distributions. We therefore perform a Gaussian Mixture Model fit, as implemented by the pomegranate Python package, to each merger's marginalized distance likelihood. We fit using an integer grid of 2-10 mixture components, repeating the fit 10 times at each grid point and using the Akaike Information Criterion to find a robust optimal GMM fit for each likelihood. To sample, we must also evaluate $\nexp$, the expected number of detected mergers, at each sampled value of the cosmological and population parameters. We do so by calculating $\nexp$ on a 5x5 grid of $H_0$ and $q_0$ assuming our fiducial rate value, and interpolating the results using a 2D fourth-order interpolant; the dependence on the sampled rate is captured by multiplying the interpolation coefficients by $\Gamma/\Gamma_{\rm fid}$. The resulting 153/193-dimensional pystan inference runs take less than a minute to generate 20,000 well converged samples on a 3.1 GHz Intel Core i7 CPU.
 
 \section{Results} \label{sec:results}
 
@@ -236,7 +295,7 @@ Start with the bottom line. Processing our simulated SEOBNR and IMRPhenom catalo
 
 \begin{figure*}[ht!]
 \plottwo{{pc_nsbh_pop_H1+_L1+_V1+_K1+_A1_d_32.0_mf_20.0_rf_14.0_dndz_rr_ubhmp_2.5_40.0_unsmp_1.0_2.4_bbhsp_seobnr_aligned_gmm_fits_rate_cosmo_post_triangle_plot}.pdf}{{pc_nsbh_pop_H1+_L1+_V1+_K1+_A1_d_32.0_mf_20.0_rf_14.0_dndz_rr_ubhmp_2.5_40.0_unsmp_1.0_2.4_bbhsp_gmm_fits_rate_cosmo_post_triangle_plot}.pdf}
-\caption{Blah.\label{fig:cosmo}}
+\caption{Cosmological and population parameter posteriors inferred for the simulated SEOBNR (left) and IMRPhenom (right) NSBH samples.\label{fig:cosmo}}
 \end{figure*}
 
 Let's now look at the results for individual mergers in closer detail, starting with the RHS of Fig.~\ref{fig:pops}. This shows the typical constraints on individual mergers' BH masses and spin magnitudes when using the SEOBNR waveform. A selection of zoomed-in versions of these constraints for both the SEOBNR (red, filled) and IMRPhenom (grey, filled) waveforms can be found in the top row of Fig.~\ref{fig:waveforms}. The selection is the highest SNR event common to both samples (left), the IMRPhenom event whose spins are closest to aligned (right), and three other mergers whose posteriors illustrate the types of degeneracies present. These plots bode well for recovering information about the neutron-star equation of state from the position of the tidal disruption line, though this is the focus of future work. Information more pertinent to the question at hand can be found in the bottom row of Fig.~\ref{fig:waveforms}, in which we show the constraints on the distance and inclination of a selection of mergers, whose various signal-to-noise ratios are indicated in the top row. What is clear, here, is the importance of precession in breaking the distance-inclination degeneracy, particularly in high-SNR events. We illustrate this further by re-running the IMRPhenom cases assuming aligned spins, having set their x and y spin components to zero. These results are overlaid as dashed dark red contours. The distance-inclination degeneracies blow up for the highest-SNR events, which will have a clear impact on the population's ability to constrain $H_0$.
@@ -273,22 +332,7 @@ We thank some people.
 
 \software{numpy \citep{}, matplotlib \citep{}, lalsim \citep{}, bilby \citep{}, pypolychord \citep{}, pomegranate \citep{}, pystan \citep{}, getdist \citep{}}
 
-%% Appendix material should be preceded with a single \appendix command.
-%% There should be a \section command for each appendix. Mark appendix
-%% subsections with the same markup you use in the main body of the paper.
-
-%% Each Appendix (indicated with \section) will be lettered A, B, C, etc.
-%% The equation counter will reset when it encounters the \appendix
-%% command and will number appendix equations (A1), (A2), etc. The
-%% Figure and Table counter will not reset.
-
-\appendix
-
-\section{Appendix information}
-
-An appendix.
-
-\bibliography{sample63}{}
+\bibliography{references}{}
 \bibliographystyle{aasjournal}
 
 %% This command is needed to show the entire author+affiliation list when
