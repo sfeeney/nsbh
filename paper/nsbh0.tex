@@ -1,100 +1,75 @@
+% ****** Start of file apssamp.tex ******
+%
+%   This file is part of the APS files in the REVTeX 4.2 distribution.
+%   Version 4.2a of REVTeX, December 2014
+%
+%   Copyright (c) 2014 The American Physical Society.
+%
+%   See the REVTeX 4 README file for restrictions and more information.
+%
+% TeX'ing this file requires that you have AMS-LaTeX 2.0 installed
+% as well as the rest of the prerequisites for REVTeX 4.2
+%
+% See the REVTeX 4 README file
+% It also requires running BibTeX. The commands are as follows:
+%
+%  1)  latex apssamp.tex
+%  2)  bibtex apssamp
+%  3)  latex apssamp.tex
+%  4)  latex apssamp.tex
+%
+\documentclass[%
+ reprint,
+ superscriptaddress,
+%groupedaddress,
+%unsortedaddress,
+%runinaddress,
+%frontmatterverbose, 
+%preprint,
+%preprintnumbers,
+ nofootinbib,
+%nobibnotes,
+%bibnotes,
+ amsmath,amssymb,
+ aps,
+%pra,
+%prb,
+%rmp,
+%prstab,
+%prstper,
+%floatfix,
+]{revtex4-2}
 
-%% Beginning of file 'sample63.tex'
-%%
-%% Modified 2019 June
-%%
-%% This is a sample manuscript marked up using the
-%% AASTeX v6.3 LaTeX 2e macros.
-%%
-%% AASTeX is now based on Alexey Vikhlinin's emulateapj.cls 
-%% (Copyright 2000-2015).  See the classfile for details.
+\usepackage{graphicx}% Include figure files
+\usepackage{dcolumn}% Align table columns on decimal point
+\usepackage{bm}% bold math
+\usepackage{hyperref}% add hypertext capabilities
 
-%% AASTeX requires revtex4-1.cls (http://publish.aps.org/revtex4/) and
-%% other external packages (latexsym, graphicx, amssymb, longtable, and epsf).
-%% All of these external packages should already be present in the modern TeX 
-%% distributions.  If not they can also be obtained at www.ctan.org.
+%\usepackage[showframe,%Uncomment any one of the following lines to test 
+%%scale=0.7, marginratio={1:1, 2:3}, ignoreall,% default settings
+%%text={7in,10in},centering,
+%%margin=1.5in,
+%%total={6.5in,8.75in}, top=1.2in, left=0.9in, includefoot,
+%%height=10in,a5paper,hmargin={3cm,0.8in},
+%]{geometry}
 
-%% The first piece of markup in an AASTeX v6.x document is the \documentclass
-%% command. LaTeX will ignore any data that comes before this command. The 
-%% documentclass can take an optional argument to modify the output style.
-%% The command below calls the preprint style which will produce a tightly 
-%% typeset, one-column, single-spaced document.  It is the default and thus
-%% does not need to be explicitly stated.
-%%
-%%
-%% using aastex version 6.3
-\documentclass[twocolumn]{aastex63}
-\usepackage{amsmath,bm}
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-%% The default is a single spaced, 10 point font, single spaced article.
-%% There are 5 other style options available via an optional argument. They
-%% can be invoked like this:
-%%
-%% \documentclass[arguments]{aastex63}
-%% 
-%% where the layout options are:
-%%
-%%  twocolumn   : two text columns, 10 point font, single spaced article.
-%%                This is the most compact and represent the final published
-%%                derived PDF copy of the accepted manuscript from the publisher
-%%  manuscript  : one text column, 12 point font, double spaced article.
-%%  preprint    : one text column, 12 point font, single spaced article.  
-%%  preprint2   : two text columns, 12 point font, single spaced article.
-%%  modern      : a stylish, single text column, 12 point font, article with
-%% 		  wider left and right margins. This uses the Daniel
-%% 		  Foreman-Mackey and David Hogg design.
-%%  RNAAS       : Preferred style for Research Notes which are by design 
-%%                lacking an abstract and brief. DO NOT use \begin{abstract}
-%%                and \end{abstract} with this style.
-%%
-%% Note that you can submit to the AAS Journals in any of these 6 styles.
-%%
-%% There are other optional arguments one can invoke to allow other stylistic
-%% actions. The available options are:
-%%
-%%   astrosymb    : Loads Astrosymb font and define \astrocommands. 
-%%   tighten      : Makes baselineskip slightly smaller, only works with 
-%%                  the twocolumn substyle.
-%%   times        : uses times font instead of the default
-%%   linenumbers  : turn on lineno package.
-%%   trackchanges : required to see the revision mark up and print its output
-%%   longauthor   : Do not use the more compressed footnote style (default) for 
-%%                  the author/collaboration/affiliations. Instead print all
-%%                  affiliation information after each name. Creates a much 
-%%                  longer author list but may be desirable for short 
-%%                  author papers.
-%% twocolappendix : make 2 column appendix.
-%%   anonymous    : Do not show the authors, affiliations and acknowledgments 
-%%                  for dual anonymous review.
-%%
-%% these can be used in any combination, e.g.
-%%
-%% \documentclass[twocolumn,linenumbers,trackchanges]{aastex63}
-%%
-%% AASTeX v6.* now includes \hyperref support. While we have built in specific
-%% defaults into the classfile you can manually override them with the
-%% \hypersetup command. For example,
-%%
-%% \hypersetup{linkcolor=red,citecolor=green,filecolor=cyan,urlcolor=magenta}
-%%
-%% will change the color of the internal links to red, the links to the
-%% bibliography to green, the file links to cyan, and the external links to
-%% magenta. Additional information on \hyperref options can be found here:
-%% https://www.tug.org/applications/hyperref/manual.html#x1-40003
-%%
-%% Note that in v6.3 "bookmarks" has been changed to "true" in hyperref
-%% to improve the accessibility of the compiled pdf file.
-%%
-%% If you want to create your own macros, you can do so
-%% using \newcommand. Your macros should appear before
-%% the \begin{document} command.
-%%
-\newcommand{\vdag}{(v)^\dagger}
-\newcommand\aastex{AAS\TeX}
-\newcommand\latex{La\TeX}
+% journals
+\newcommand{\mnras}{MNRAS}
+\newcommand{\aap}{A\&A}
+\newcommand{\aaps}{A\&AS}
+\newcommand{\apjs}{ApJS}
+\newcommand{\apjl}{ApJL}
+\newcommand{\araa}{ARA\&A}
+\newcommand{\jhep}{JHEP}
+\newcommand{\aj}{AJ}
+\newcommand{\jcap}{JCAP}
+\newcommand{\pasp}{PASP}
+\newcommand{\pnas}{PNAS}
+\newcommand{\epjc}{EPJC}
 
-
-
+% maths
 %\newcommand{\dataset}{\vect{d}}
 \newcommand{\msun}{M_\odot}
 \newcommand{\hubble}{\ensuremath{H_0}}
@@ -139,97 +114,42 @@
 \newcommand{\plancks}{{\it Planck{\rm 's}}}
 \newcommand{\lcdm}{$\Lambda$CDM}
 
-%% Reintroduced the \received and \accepted commands from AASTeX v5.2
-%\received{June 1, 2019}
-%\revised{January 10, 2019}
-%\accepted{\today}
-\received{}
-\revised{}
-\accepted{}
-%% Command to document which AAS Journal the manuscript was submitted to.
-%% Adds "Submitted to " the argument.
-\submitjournal{ApJL}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%
-%% The following section outlines numerous optional output that
-%% can be displayed in the front matter or as running meta-data.
-%%
-%% If you wish, you may supply running head information, although
-%% this information may be modified by the editorial offices.
-\shorttitle{NSB$H_0$}
-\shortauthors{Feeney et al.}
-%%
-%% You can add a light gray and diagonal water-mark to the first page 
-%% with this command:
-%% \watermark{text}
-%% where "text", e.g. DRAFT, is the text to appear.  If the text is 
-%% long you can control the water-mark size with:
-%% \setwatermarkfontsize{dimension}
-%% where dimension is any recognized LaTeX dimension, e.g. pt, in, etc.
-%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%% This is the end of the preamble.  Indicate the beginning of the
-%% manuscript itself with \begin{document}.
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
 \begin{document}
 
+%\preprint{APS/123-QED}
+
 \title{Measuring the Hubble Constant with Neutron-Star-Black-Hole Mergers in the A+ Era}
 
-\correspondingauthor{Stephen M. Feeney}
-\email{stephen.feeney@ucl.ac.uk}
-
-\author[0000-0003-2268-2519]{Stephen M. Feeney}
+\author{Stephen M. Feeney}
 \affiliation{Department of Physics \& Astronomy, University College London, Gower Street, London WC1E 6BT, UK}
-\author[0000-0002-0041-3783]{Daniel J. Mortlock}
+\author{Daniel J. Mortlock}
 \affiliation{Astrophysics Group, Imperial College London, Blackett Laboratory, Prince Consort Road, London SW7 2AZ, UK}
 \affiliation{Department of Mathematics, Imperial College London, London SW7 2AZ, UK}
 \affiliation{Department of Astronomy, Stockholm University, AlbaNova, SE-10691 Stockholm, Sweden}
-\author[0000-0001-6573-7773]{Samaya M. Nissanke}
+\author{Samaya M. Nissanke}
 \affiliation{GRAPPA, Anton Pannekoek Institute for Astronomy and Institute of High-Energy Physics, University of Amsterdam, Science Park 904, 1098 XH Amsterdam, The Netherlands}
 \affiliation{Nikhef, Science Park 105, 1098 XG Amsterdam, The Netherlands}
-\author[0000-0002-2519-584X]{Hiranya V. Peiris}
+\author{Hiranya V. Peiris}
 \affiliation{Department of Physics \& Astronomy, University College London, Gower Street, London WC1E 6BT, UK}
 \affiliation{Oskar Klein Centre for Cosmoparticle Physics, Department of Physics,
 Stockholm University, AlbaNova, Stockholm SE-106 91, Sweden}
 
-%% Mark off the abstract in the ``abstract'' environment. 
+\date{\today}% It is always \today, today,
+             %  but any date may be explicitly specified
+
 \begin{abstract}
-
-The Astrophysical Journal Letters (ApJL) has a 250 word limit for the abstract.
-
+PRL maximum length: 3750 words; abstract should be under 600 characters.
 \end{abstract}
 
-%% Keywords should appear after the \end{abstract} command. 
-%% See the online documentation for the full list of available subject
-%% keywords and the rules for their use.
-\keywords{editorials, notices --- 
-miscellaneous --- catalogs --- surveys}
+%\keywords{Suggested keywords}%Use showkeys class option if keyword
+                              %display desired
+\maketitle
 
-%% From the front matter, we move on to the body of the paper.
-%% Sections are demarcated by \section and \subsection, respectively.
-%% Observe the use of the LaTeX \label
-%% command after the \subsection to give a symbolic KEY to the
-%% subsection for cross-referencing in a \ref command.
-%% You can use LaTeX's \ref and \label commands to keep track of
-%% cross-references to sections, equations, tables, and figures.
-%% That way, if you change the order of any elements, LaTeX will
-%% automatically renumber them.
-%%
-%% We recommend that authors also use the natbib \citep
-%% and \citet commands to identify citations.  The citations are
-%% tied to the reference list via symbolic KEYs. The KEY corresponds
-%% to the KEY in the \bibitem in the reference list below. 
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
 \section{Introduction} \label{sec:intro}
-
-%Restrictions:
-%\begin{enumerate}
-%	\item Main Text -- no more than 3500 words (not including appendices or other supplementary material)
-%	\item Figures and Tables -- no more than 5 combined figures (each limited to 9 panels) and tables, e.g. 3 figures and 2 tables.
-%	\item References -- no more than 50 references
-%\end{enumerate}
 
 The current expansion rate of the Universe -- the Hubble constant, or $H_0$ -- is at the center of a serious cosmological controversy. Measured directly in the local Universe by the SH0ES team's Cepheid-supernova distance ladder, it is found to be blah. Estimated in a cosmological-model-dependent fashion from the Planck satellite's observations of the cosmic microwave background's temperature and polarization anisotropies, it is found to be wah. This is a big ol' discrepancy.
 
@@ -239,10 +159,11 @@ The second, more prosaic explanation, is that there are undiagnosed analysis iss
 
 Here's where GWs come in. Combining GW detections, which yield distance estimates, with EM counterparts, it's possible to estimate $H_0$ assuming general relativity alone [Schutz, Holz, Samaya]. With the advent of detections from LIGO and Virgo, starting to do this, both directly in the one case where the counterpart is known (LVC) and statistically in the case where it is not (many). Prime candidate here is BNS, as counterparts expected and things much more precise [us x 2, chen]. BBH can also be useful (see recent papers on blah, but note association is not firm, and model-dependent). What hasn't been researched so much is NSBH. Discuss [Chen Vitale], and motivate what we're doing here. Full ranges of parameters. Different waveforms. EM selection. This is the focus of this paper.
 
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
 \section{Simulations} \label{sec:sims}
 
-In this work we simulate the results of a circa-2025 GW detector network, consisting of LIGO A+, Virgo AdV+, KAGRA and LIGO India~\citep{Aasi:2013wya} {\bf [and Sukanta Bose private comm / LIGO-T2000158]} observing for $\tobs = 5 \yr$ with a 50\% duty cycle, $\fobs$. We assume a constant rest-frame  NSBH merger rate $\Gamma = 610$ \yrgpc\ (matching the 90\% upper limit of~\cite{Ligo:2018}), and ground truth cosmological parameters matching~\cite{Planck_VI:2018}, with $\hubble=67.36\,\kmsmpc$ and $\decel=-0.527$.
+In this work we simulate the results of a circa-2025 GW detector network, consisting of LIGO A+, Virgo AdV+, KAGRA and LIGO India~\citep{Abbott_etal:2013} {\bf [and Sukanta Bose private comm / LIGO-T2000158]} observing for $\tobs = 5 \yr$ with a 50\% duty cycle, $\fobs$. We assume a constant rest-frame  NSBH merger rate $\Gamma = 610$ \yrgpc\ (matching the 90\% upper limit of~\cite{Ligo:2018}), and ground truth cosmological parameters matching~\cite{Planck_VI:2018}, with $\hubble=67.36\,\kmsmpc$ and $\decel=-0.527$.
 
 %H1+ LVC_AplusDesign_PSD.txt https://dcc.ligo.org/LIGO-T2000012/public
 %L1+ LVC_AplusDesign_PSD.txt https://dcc.ligo.org/LIGO-T2000012/public
@@ -269,14 +190,16 @@ For each merger, we draw a cosmological redshift from the distribution
 %($Z = 0.0002$)
 binary population synthesis simulations~\citep{Kruckow_etal:2018} and extending to low masses to reflect the detection of objects in the purported mass gap~\citep{LVC:2020O3acat}. NS masses are drawn from $\prob(\mns) = \uniform(1\msun, 2.42\msun)$, with an upper limit chosen to match that of the DD2 EOS {\bf [which citation?]}, and BH and NS spin magnitudes from the uniform distributions $\prob(\abh) = \uniform(0, 0.99)$ and  $\prob(\ans) = \uniform(0, 0.05)$, assuming they are oriented isotropically. Following~\cite{Foucart_etal:2018}, we use the component masses, NS radii and BH spins to calculate the baryonic mass ejected by each merger. Note that this formula 1) requires the assumption of a NS EOS (we use DD2) and 2) has been calibrated using simulations without precession. We use the same EOS to calculate tidal deformabilities for the NSs, setting the BH deformabilities to zero. Finally, we generate peculiar velocities for each merger from the Gaussian distribution $\prob(v) = \normal(0\,\kms,500\,\kms)$.
 
-With the ground truth parameters in hand, we generate the data for each merger and apply our selection criteria.  To determine the impact of different physical effects on our results, we simulate two populations using different waveform approximants: the BNS-focused IMRPhenomPv2\_NRTidal~\citep{Dietrich_etal:2019} and NSBH-specific SEOBNRv4\_ROM\_NRTidalv2\_NSBH~\citep{Matas_etal:2020} (hereafter IMRPhenom and SEOBNR). {\bf One does this, the other does that.} As the SEOBNR waveform requires (anti-)aligned spins, we zero the transverse NS and BH spins after sampling them isotropically {\bf [mimicking, in some sense spins becoming aligned over time?]}. For each waveform, we generate 32-second segments of noisy GW data $\dgw$ per merger\footnote{Using spectra from \url{https://dcc.ligo.org/LIGO-T2000012/public}.}, using a frequency range of 20-2048 Hz and identical random seeds, and consider it detected if the network signal-to-noise ratio is at least $\snrmin = 12$. We assume that the GW detectors operate in concert with an EM followup program capable of detecting all mergers with ejecta mass greater than $\mejmin = 0.01\,M_\odot$; as a result, the selection function is not entirely based on the GW signal. Finally, we generate noisy redshift and peculiar velocity estimates by drawing from $\prob(\zobs|z)=\normal(z,0.001)$ and $\prob(\vobs|v)=\normal(v,200\,\kms)$, respectively.
+With the ground truth parameters in hand, we generate the data for each merger and apply our selection criteria.  To determine the impact of different physical effects on our results, we simulate two populations using different waveform approximants: the BNS-focused IMRPhenomPv2\_NRTidal~\citep{Dietrich_etal:2019} and NSBH-specific SEOBNRv4\_ROM\_NRTidalv2\_NSBH~\citep{Matas_etal:2020} (hereafter IMRPhenom and SEOBNR). {\bf One does this, the other does that.} As the SEOBNR waveform requires (anti-)aligned spins, we zero the transverse NS and BH spins after sampling them isotropically {\bf [mimicking, in some sense, spins becoming aligned over time?]}. For each waveform, we generate 32-second segments of noisy GW data $\dgw$ per merger\footnote{Using spectra from \url{https://dcc.ligo.org/LIGO-T2000012/public}.}, using a frequency range of 20-2048 Hz and identical random seeds, and consider it detected if the network signal-to-noise ratio is at least $\snrmin = 12$. We assume that the GW detectors operate in concert with an EM followup program capable of detecting all mergers with ejecta mass greater than $\mejmin = 0.01\,M_\odot$; as a result, the selection function is not entirely based on the GW signal. Finally, we generate noisy redshift and peculiar velocity estimates by drawing from $\prob(\zobs|z)=\normal(z,0.001)$ and $\prob(\vobs|v)=\normal(v,200\,\kms)$, respectively.
 
 Of the 25241 simulated mergers, 2477 (2954) are detected in GWs using the IMRPhenom (SEOBNR) waveform, 99 (75) of which have sufficient ejecta to be detected in EM; 62 appear in both samples. {\bf [Why more GW det in SEOBNR?]} Zeroing the transverse spins for use with the SEOBNR waveform has the side-effect of reducing the typical ejecta mass~\citep{Foucart_etal:2018} and hence the final GW+EM-detected sample. The simulated BH masses and spin magnitudes of the SEOBNR population are shown in Figure~\ref{fig:pops} {\bf [relabel to undetected in GW/EM?]}.\footnote{The plot for the IMRPhenom sample is very similar, but with mergers filling the full range of the y-axis as the transverse spins are non-zero.} Here, mergers whose GW SNRs fail (exceed) our detection threshold are displayed as hollow (filled) circles, and mergers with ejecta mass below (above) our EM detection threshold are colored purple (blue). Overlaid are three disruption lines, indicating the BH spins at which the ejecta mass reaches our minimum detection threshold for NS masses equal to the minimum (dot-dashed), mean (solid) and maximum (dashed) of their distribution. The detected population has a clear preference for low BH mass and high BH spin, and thus the number of detections expected will depend strongly on the spin and mass distributions. In particular, we note that populations with near-solar metallicity will likely produce NSBH systems with lower BH masses~\citep{Kruckow_etal:2018} and hence a larger population of GW+EM-detectable mergers.
 
 \begin{figure*}[ht!]
-\plotone{{pc_nsbh_pop_H1+_L1+_V1+_K1+_A1_d_32.0_mf_20.0_rf_14.0_dndz_rr_ubhmp_2.5_40.0_unsmp_1.0_2.4_bbhsp_seobnr_aligned_imp_sample_weighted_samples_disruption_line_in_out_comp}.pdf}
+\includegraphics[width=16cm]{{pc_nsbh_pop_H1+_L1+_V1+_K1+_A1_d_32.0_mf_20.0_rf_14.0_dndz_rr_ubhmp_2.5_40.0_unsmp_1.0_2.4_bbhsp_seobnr_aligned_imp_sample_weighted_samples_disruption_line_in_out_comp}.pdf}
 \caption{Ground-truth (left) and inferred (right) properties of simulated NSBH binaries. (Left) Most systems are not detected in GWs (empty circles). Those with low BH mass and high BH spin are most likely to produce ejecta and thus EM emission (blue circles). (Right) Posterior inference for these systems, clearly indicating the preferred region of parameter space.\label{fig:pops}}
 \end{figure*}
+
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
 \section{Methods} \label{sec:methods}
 
@@ -318,61 +241,41 @@ $\boldsymbol{\theta}_i$ comprises the $i^{\rm th}$ merger's component masses, sp
 
 Given the marginal GW likelihoods, we use No-U-Turn Sampling as implemented by the \texttt{pystan} package~\citep{pystan} to infer the cosmological and population parameters. We assume a broad Gaussian prior on \hubble, $\prob(\hubble)=\normal(70,20)$ \kmsmpc, a truncated Gaussian prior on \decel, $\prob(\decel)=\step(\decel+2)\step(1-\decel)\normal(-0.5,0.5)$, and a log-uniform prior on the rate, $\prob(\rate) \propto 1/\rate$. To use \texttt{pystan}, we must be able to sample all parameters from analytic distributions. We therefore perform a Gaussian Mixture Model fit to each merger's marginal distance likelihood using \texttt{pomegranate}~\citep{Schreiber:2017}. We fit each likelihood with an integer grid of 2-10 mixture components, repeating 10 times at each grid point and selecting the best fit using the Akaike Information Criterion~\citep{Akaike:1974}. Finally, we must evaluate the expected number of detected mergers $\nexp$ at each sampled value of the cosmological and population parameters. We do so by re-simulating the catalogues 100 times at each point of a 5x5 grid in $\{H_0,q_0\}$ assuming our fiducial rate, and interpolating the results using a 2D fourth-order interpolant. The dependence on the sampled rate is captured by multiplying the interpolation coefficients by $\Gamma/\Gamma_{\rm fid}$. The resulting 153/193-dimensional \texttt{pystan} inference runs take less than a minute to generate 20,000 well converged samples on a 3.1 GHz Intel Core i7 CPU. The set of true redshifts and peculiar velocities are uninteresting for the purposes of cosmology inference, and we therefore marginalize over these parameters when quoting the results below.
 
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+
 \section{Results} \label{sec:results}
 
-Start with the bottom line. Processing our simulated SEOBNR and IMRPhenom catalogues through our inference pipeline produces the cosmology and population parameter posteriors shown in Fig.~\ref{fig:cosmo}. In both cases, the recovered $H_0$, $q_0$ and rate posteriors are completely consistent with the ground truth values. The credible range on the near-Gaussian $H_0$ marginal posterior is $\pm 1.6$ km/s/Mpc for the SEOBNR waveform and $\pm 1.0$ km/s/Mpc for IMRPhenom, reflecting the ability for precessing spins to break the distance-inclination degeneracy [cite]. There is, of course, a sample-size effect, too,  In both cases, however, this is comparable to the current Cepheid-SN distance ladder precision, and NSBH populations (should they occur at rates and produce EM counterparts roughly matching our assumptions) will therefore strongly inform the outcome of the current Hubble constant tension, particularly when combined with BNS populations. The mergers are also informative about the deceleration parameter, $q_0$, shrinking its uncertainty from 0.5 to 0.32 or 0.26, depending on the waveform. This further implies that NSBH mergers are able to begin constraining parameters such as OmegaM or w (in the context of LCDM models), complementary to BBH results from higher redshifts [cite]. The merger rates are recovered with roughly 10\% precision.
+Processing the simulated SEOBNR and IMRPhenom catalogues through our two-stage inference pipeline produces the cosmology and population parameter posteriors shown in Fig.~\ref{fig:cosmo}. In both cases, the recovered \hubble, \decel\ and rate posteriors are completely consistent with the ground truth values, indicating, as expected, that the selection effects are correctly accounted for. The 68\% credible intervals on the near-Gaussian $\hubble$ marginal posteriors are $68.8 \pm 1.6\,\kmsmpc$ for the SEOBNR sample and $66.7 \pm 1.0\,\kmsmpc$ for IMRPhenom. Recall that the IMRPhenom sample contains 99 objects to the SEOBNR sample's 75, and we should therefore expect that the IMRPhenom sample's $\hubble$ posterior be roughly 13\% narrower than that of the SEOBNR sample. The remaining reduction, therefore, reflects the ability for precessing spins to break the distance-inclination degeneracy {\bf [cites]}. This additional constraining power is equivalent to an approximate doubling of the catalogue size.
+
+The \hubble\ uncertainties we find for both waveforms are comparable to the current Cepheid-SN distance ladder precision. NSBH populations -- should they produce EM counterparts and occur at rates roughly matching our assumptions -- will therefore strongly inform the outcome of the current \hubble\ tension, particularly when combined with accompanying BNS populations, likely of comparable size. The mergers are also informative about the deceleration parameter, $q_0$, shrinking its uncertainty from 0.5 to 0.32 or 0.26, depending on the waveform. This further implies that NSBH catalogues will be able to begin constraining parameters such as the matter density and dark energy EOS (in the context of \lcdm\ and extended models), complementary to BBH results from higher redshifts~\citep{Farr_etal:2019,Chen_etal:2020,Mukherjee_etal:2020}. The merger rates are recovered with roughly 10\% precision.
 
 \begin{figure*}[ht!]
-\plottwo{{pc_nsbh_pop_H1+_L1+_V1+_K1+_A1_d_32.0_mf_20.0_rf_14.0_dndz_rr_ubhmp_2.5_40.0_unsmp_1.0_2.4_bbhsp_seobnr_aligned_gmm_fits_rate_cosmo_post_triangle_plot}.pdf}{{pc_nsbh_pop_H1+_L1+_V1+_K1+_A1_d_32.0_mf_20.0_rf_14.0_dndz_rr_ubhmp_2.5_40.0_unsmp_1.0_2.4_bbhsp_gmm_fits_rate_cosmo_post_triangle_plot}.pdf}
+\includegraphics[width=8cm]{{pc_nsbh_pop_H1+_L1+_V1+_K1+_A1_d_32.0_mf_20.0_rf_14.0_dndz_rr_ubhmp_2.5_40.0_unsmp_1.0_2.4_bbhsp_seobnr_aligned_gmm_fits_rate_cosmo_post_triangle_plot}.pdf}\includegraphics[width=8cm]{{pc_nsbh_pop_H1+_L1+_V1+_K1+_A1_d_32.0_mf_20.0_rf_14.0_dndz_rr_ubhmp_2.5_40.0_unsmp_1.0_2.4_bbhsp_gmm_fits_rate_cosmo_post_triangle_plot}.pdf}
 \caption{Cosmological and population parameter posteriors inferred for the simulated SEOBNR (left) and IMRPhenom (right) NSBH samples.\label{fig:cosmo}}
 \end{figure*}
 
-Let's now look at the results for individual mergers in closer detail, starting with the RHS of Fig.~\ref{fig:cosmo}. This shows the typical constraints on individual mergers' BH masses and spin magnitudes when using the SEOBNR waveform. A selection of zoomed-in versions of these constraints for both the SEOBNR (red, filled) and IMRPhenom (grey, filled) waveforms can be found in the top row of Fig.~\ref{fig:waveforms}. The selection is the highest SNR event common to both samples (left), the IMRPhenom event whose spins are closest to aligned (right), and three other mergers whose posteriors illustrate the types of degeneracies present. These plots bode well for recovering information about the neutron-star equation of state from the position of the tidal disruption line, though this is the focus of future work. Information more pertinent to the question at hand can be found in the bottom row of Fig.~\ref{fig:waveforms}, in which we show the constraints on the distance and inclination of a selection of mergers, whose various signal-to-noise ratios are indicated in the top row. What is clear, here, is the importance of precession in breaking the distance-inclination degeneracy, particularly in high-SNR events. We illustrate this further by re-running the IMRPhenom cases assuming aligned spins, having set their x and y spin components to zero. These results are overlaid as dashed dark red contours. The distance-inclination degeneracies blow up for the highest-SNR events, which will have a clear impact on the population's ability to constrain $H_0$.
+Let's now look at the results for individual mergers in closer detail, starting with the RHS of Fig.~\ref{fig:pops}. This shows the typical constraints on individual mergers' BH masses and spin magnitudes when using the SEOBNR waveform. A selection of zoomed-in versions of these constraints for both the SEOBNR (red, filled) and IMRPhenom (grey, filled) waveforms can be found in the top row of Fig.~\ref{fig:waveforms}. The selection is the highest SNR event common to both samples (left), the IMRPhenom event whose spins are closest to aligned (right), and three other mergers whose posteriors illustrate the types of degeneracies present. These plots bode well for recovering information about the neutron-star equation of state from the position of the tidal disruption line, though this is the focus of future work. Information more pertinent to the question at hand can be found in the bottom row of Fig.~\ref{fig:waveforms}, in which we show the constraints on the distance and inclination of a selection of mergers, whose various signal-to-noise ratios are indicated in the top row. What is clear, here, is the importance of precession in breaking the distance-inclination degeneracy, particularly in high-SNR events. We illustrate this further by re-running the IMRPhenom cases assuming aligned spins, having set their x and y spin components to zero. These results are overlaid as dashed dark red contours. The distance-inclination degeneracies blow up for the highest-SNR events, which will have a clear impact on the population's ability to constrain $H_0$.
 
 \begin{figure*}[ht!]
-\plotone{{nsbh_pop_H1+_L1+_V1+_K1+_A1_d_32.0_mf_20.0_rf_14.0_dndz_rr_ubhmp_2.5_40.0_unsmp_1.0_2.4_bbhsp_aligned_imp_sample_weighted_samples_spin_z_mass_dis_inc_wf_comp}.pdf}
+\includegraphics[width=16cm]{{nsbh_pop_H1+_L1+_V1+_K1+_A1_d_32.0_mf_20.0_rf_14.0_dndz_rr_ubhmp_2.5_40.0_unsmp_1.0_2.4_bbhsp_aligned_imp_sample_weighted_samples_spin_z_mass_dis_inc_wf_comp}.pdf}
 \caption{Posterior distributions for mergers simulated using the IMRPhenom waveform with precessing (grey filled) and aligned (dark red dashed) spins, and the SEOBNR waveform (red) with aligned spins. Each column depicts the distance, inclination, and black-hole mass and $z$-spin magnitude posteriors for a merger with true parameters indicated by black plus symbols (crosses where the true $z$-spin is negative). Shown are: (left) the merger with the highest signal-to-noise, (right) the two IMRPhenom mergers whose black-hole spins are closest to being aligned, and (center) two further mergers indicating the range of posteriors observed. \label{fig:waveforms}}
 \end{figure*}
 
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
 \section{Conclusions} \label{sec:conclusions}
+Unbiased. Comparable to Cepheids. Particular physics / waveform matters in detail: precession buys you factor of two in sample size. Will inform \hubble\ debate.
 
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-\acknowledgments
+\begin{acknowledgments}
+S.M. Feeney is supported by the Royal Society.
+\end{acknowledgments}
 
-We thank some people.
+% % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
-%% To help institutions obtain information on the effectiveness of their 
-%% telescopes the AAS Journals has created a group of keywords for telescope 
-%% facilities.
-%
-%% Following the acknowledgments section, use the following syntax and the
-%% \facility{} or \facilities{} macros to list the keywords of facilities used 
-%% in the research for the paper.  Each keyword is check against the master 
-%% list during copy editing.  Individual instruments can be provided in 
-%% parentheses, after the keyword, but they are not verified.
-
-\vspace{5mm}
-
-%% Similar to \facility{}, there is the optional \software command to allow 
-%% authors a place to specify which programs were used during the creation of 
-%% the manuscript. Authors should list each code and include either a
-%% citation or url to the code inside ()s when available.
-
-\software{numpy \citep{harris2020array}, matplotlib \citep{Hunter:2007}, lalsuite \citep{lalsuite}, bilby \citep{Ashton_etal:2019}, pypolychord \citep{Handley_etal:2015a,Handley_etal:2015b}, pomegranate \citep{Schreiber:2017}, pystan \citep{pystan}, getdist \citep{Lewis:2019xzd}}
-
-\bibliography{references}{}
-\bibliographystyle{aasjournal}
-
-%% This command is needed to show the entire author+affiliation list when
-%% the collaboration and author truncation commands are used.  It has to
-%% go at the end of the manuscript.
-%\allauthors
-
-%% Include this line if you are using the \added, \replaced, \deleted
-%% commands to see a summary list of all changes at the end of the article.
-%\listofchanges
+\bibliography{references}% Produces the bibliography via BibTeX.
 
 \end{document}
-
-% End of file `sample63.tex'.
+%
+% ****** End of file apssamp.tex ******
