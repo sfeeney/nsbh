@@ -192,22 +192,18 @@ In this work we simulate the results of a circa-2025 GW detector network, consis
 %K1+ LVC_kagra_128Mpc_PSD.txt https://arxiv.org/pdf/1102.5421.pdf
 %A1 LVC_AplusDesign_PSD.txt
 
-Each simulation starts by drawing the total number of mergers from a Poisson distribution with mean $\lambda = \fobs \, \tobs \, V \, \Gamma $, where $V$ is the redshifted volume
-\begin{equation}
-V = \int_0^{\zmax} \frac{{\rm d}V}{{\rm d}z} \frac{{\rm d}z}{1+z}
+Each simulation starts by drawing the total number of mergers from a Poisson distribution with mean $\lambda = \fobs \, \tobs \, V \, \Gamma $, where $V = 4\pi \int_0^{\zmax} \frac{{\rm d}V}{{\rm d}z} \frac{{\rm d}z}{1+z}$ is the redshifted volume and we use a cosmographic co-moving volume element, expanded to third order (the jerk, $j_0$, which we take to be one).\footnote{\begin{equation}
+\frac{{\rm d}V}{{\rm d}z} \simeq 4\pi \frac{c^3 z^2}{\hubble^3} \left[1 - 2 \left(1 + \decel \right) z + \frac{5}{12} \left(7 + 14 \decel - 2 \jerk + 9 \decel^2 \right) z^2 \right] \nonumber
 \end{equation}
-and the co-moving volume element is
-\begin{align}
-\frac{{\rm d}V}{{\rm d}z} \simeq & 4\pi \frac{c^3 z^2}{\hubble^3} \\
-& \left[1 - 2 \left(1 + \decel \right) z + \frac{5}{12} \left(7 + 14 \decel - 2 \jerk + 9 \decel^2 \right) z^2 \right] \nonumber
-\end{align}
-to third order in expansion parameters (hereafter, we assume the jerk $j_0 = 1$). The upper limit to the integral, $\zmax$, must be chosen such that there is negligible probability of a merger at $\zmax$ being detected: we find that $\zmax=0.44$ suffices for our setting. For our fiducial parameter set, $\lambda = 25160$; the particular Poisson draw we obtain yields a total of 25241 mergers.
+\smf{Can't find a reference for this equation\ldots}
+}
+%\begin{align}
+%\frac{{\rm d}V}{{\rm d}z} \simeq & 4\pi \frac{c^3 z^2}{\hubble^3} \\
+%& \left[1 - 2 \left(1 + \decel \right) z + \frac{5}{12} \left(7 + 14 \decel - 2 \jerk + 9 \decel^2 \right) z^2 \right] \nonumber
+%\end{align}
+The upper limit to the integral, $\zmax$, must be chosen such that there is negligible probability of a merger at $\zmax$ being detected: we find that $\zmax=0.44$ suffices for our setting. For our fiducial parameter set, $\lambda = 25160$; the particular Poisson draw we obtain yields a total of 25241 mergers.
 
-For each merger, we draw a cosmological redshift from the distribution
-\begin{equation}
-\prob(z) \propto \step(z) \step(\zmax-z) \frac{1}{1+z} \frac{{\rm d}V}{{\rm d}z}
-\end{equation}
-(where $\step$ denotes the Heaviside step function), along with an isotropically distributed angular sky position, inclination angle, phase and polarization angle. We draw uniformly distributed BH masses from $\prob(\mbh) = \uniform(2.5\msun, 40\msun)$, taking the upper limit from low-metallicity\footnote{Using solar metallicity simulations would reduce this upper limit to $\sim12\,\msun$, likely increasing, as we will see, the number of EM-detectable NSBH mergers.}
+For each merger, we draw a cosmological redshift assuming a constant source-frame rate (see, e.g., Eq. 28 of Ref.~\cite{Mortlock_etal:2019}), along with an isotropically distributed angular sky position, inclination angle, phase and polarization angle. We draw uniformly distributed BH masses from $\prob(\mbh) = \uniform(2.5\msun, 40\msun)$, taking the upper limit from low-metallicity\footnote{Using solar metallicity simulations would reduce this upper limit to $\sim12\,\msun$, likely increasing, as we will see, the number of EM-detectable NSBH mergers.}
 %($Z = 0.0002$)
 binary population synthesis simulations~\cite{Kruckow_etal:2018} and extending to low masses to reflect the detection of objects in the purported mass gap~\cite{LVC:2020O3acat}. NS masses are drawn from $\prob(\mns) = \uniform(1\msun, 2.42\msun)$, with an upper limit chosen to match that of the DD2 EOS \smf{Samaya, what's the best citation here? There seem to be many different citations for this EOS in the literature\ldots}, and BH and NS spin magnitudes from the uniform distributions $\prob(\abh) = \uniform(0, 0.99)$ and  $\prob(\ans) = \uniform(0, 0.05)$, assuming they are oriented isotropically. Following Ref.~\cite{Foucart_etal:2018}, we use the component masses, NS radii and BH spins to calculate the baryonic mass ejected by each merger. Note that this formula 1) requires the assumption of a NS EOS (we use DD2) and 2) has been calibrated using simulations without precession. We use the same EOS to calculate tidal deformabilities for the NSs, setting the BH deformabilities to zero. Finally, we generate a peculiar velocity $v$ for each merger from a zero-mean Gaussian with $500\,\kms$ standard deviation.
 
@@ -250,19 +246,19 @@ The probabilistic inference of the Hubble constant from catalogues of compact ob
 %\end{align}
 where $N$ and $\nexp$ are the actual and expected number of mergers detected, respectively, curly brackets denote sets of quantities and bold denotes per-merger vectors.
 
-We infer the parameters of this model in two parts, using two sampling methods. First, we first process each merger individually in order to obtain the GW likelihoods marginalized over all parameters $\boldsymbol{\theta}_i$ other than the luminosity distance $d$ to the merger,
-\begin{equation*}
-\prob(\dgw_i | d[ z_i, \hubble, \decel ]) = \int {\rm d}\boldsymbol{\theta}_i \prob(\boldsymbol{\theta}_i) \prob(\dgw_i | d[ z_i, \hubble, \decel ], \boldsymbol{\theta}_i),
-%\label{eq:marge_like}
-\end{equation*}
-where
-\begin{equation*}
-d \simeq \frac{cz}{\hubble} \left[1 + \frac{1}{2} \left(1 - \decel \right) z + \frac{1}{6} \left(-1 + \decel - \jerk + 3 \decel^2 \right) z^2 \right].
-%\label{eq:distance}
-\end{equation*}
-$\boldsymbol{\theta}_i$ comprises the $i^{\rm th}$ merger's component masses, spin magnitudes and orientations (where appropriate), inclination, polarization angle, NS tidal deformability, and time and phase at coalescence. We adopt priors identical to the distributions used in the generative model for all parameters other than the masses. Convergence is greatly improved by sampling chirp masses and mass ratios instead of component masses, and we therefore sample using interim priors that are uniform in these parameters (over the ranges permitted by our component-mass extrema), before importance-sampling the outputs to reinstate our desired component-mass priors. The marginal GW likelihoods are sampled with the \texttt{pypolychord} nested sampler~\cite{Handley_etal:2015a,Handley_etal:2015b}, wrapped by \texttt{bilby}~\cite{Ashton_etal:2019}, using 1000 live points and \texttt{bilby}'s \texttt{marginalize\_phase}, \texttt{\_time} and \texttt{\_distance} settings. Each 15/11-dimensional IMRPhenom (SEOBNR) sampling run takes 6-14 (4-6) days to complete on one Intel Xeon 2.70GHz CPU.
+We infer the parameters of this model in two parts, using two sampling methods. First, we first process each merger individually in order to obtain the GW likelihoods marginalized over all parameters $\boldsymbol{\theta}_i$ other than the luminosity distance $d$ to the merger;
+%\begin{equation*}
+%\prob(\dgw_i | d[ z_i, \hubble, \decel ]) = \int {\rm d}\boldsymbol{\theta}_i \prob(\boldsymbol{\theta}_i) \prob(\dgw_i | d[ z_i, \hubble, \decel ], \boldsymbol{\theta}_i),
+%%\label{eq:marge_like}
+%\end{equation*}
+%where
+%\begin{equation*}
+%d \simeq \frac{cz}{\hubble} \left[1 + \frac{1}{2} \left(1 - \decel \right) z + \frac{1}{6} \left(-1 + \decel - \jerk + 3 \decel^2 \right) z^2 \right].
+%%\label{eq:distance}
+%\end{equation*}
+$\boldsymbol{\theta}_i$ here comprising the $i^{\rm th}$ merger's component masses, spin magnitudes and orientations (where appropriate), inclination, polarization angle, NS tidal deformability, and time and phase at coalescence. We adopt priors identical to the distributions used in the generative model for all parameters other than the masses. Convergence is greatly improved by sampling chirp masses and mass ratios instead of component masses, and we therefore sample using interim priors that are uniform in these parameters (over the ranges permitted by our component-mass extrema), before importance-sampling the outputs to reinstate our desired component-mass priors. The marginal GW likelihoods are sampled with the \texttt{pypolychord} nested sampler~\cite{Handley_etal:2015a,Handley_etal:2015b}, wrapped by \texttt{bilby}~\cite{Ashton_etal:2019}, using 1000 live points and \texttt{bilby}'s \texttt{marginalize\_phase}, \texttt{\_time} and \texttt{\_distance} settings. Each 15/11-dimensional IMRPhenom (SEOBNR) sampling run takes 6-14 (4-6) days to complete on one Intel Xeon 2.70GHz CPU.
 
-Given the marginal GW likelihoods, we use No-U-Turn Sampling as implemented by the \texttt{pystan} package~\cite{pystan} to infer the cosmological and population parameters. We assume a broad Gaussian prior on \hubble, $\prob(\hubble)=\normal(70,20)$ \kmsmpc, a truncated Gaussian prior on \decel, $\prob(\decel)=\step(\decel+2)\step(1-\decel)\normal(-0.5,0.5)$, and a log-uniform prior on the rate, $\prob(\rate) \propto 1/\rate$. To use \texttt{pystan}, we must be able to sample all parameters from analytic distributions. We therefore perform a Gaussian Mixture Model fit to each merger's marginal distance likelihood using \texttt{pomegranate}~\cite{Schreiber:2017}. We fit each likelihood with an integer grid of 2-10 mixture components, repeating 10 times at each grid point and selecting the best fit using the Akaike Information Criterion~\cite{Akaike:1974}. Finally, we must evaluate the expected number of detected mergers $\nexp$ at each sampled value of the cosmological and population parameters. We do so by re-simulating the catalogues 100 times at each point of a 5x5 grid in $\{H_0,q_0\}$ assuming our fiducial rate, and interpolating the results using a 2D fourth-order interpolant. The dependence on the sampled rate is captured by multiplying the interpolation coefficients by $\Gamma/\Gamma_{\rm fid}$. The resulting 153/193-dimensional \texttt{pystan} inference runs take less than a minute to generate 20,000 well converged samples on a 3.1 GHz Intel Core i7 CPU. The set of true redshifts and peculiar velocities are uninteresting for the purposes of cosmology inference, and we therefore marginalize over these parameters when quoting the results below.
+Given the marginal GW likelihoods, we use No-U-Turn Sampling as implemented by the \texttt{pystan} package~\cite{pystan} to infer the cosmological and population parameters. To connect to the cosmological parameters, we adopt a third-order distance-redshift relation matching our volume element~\cite{Visser:2004}, varying \hubble\ and \decel\ but fixing the jerk to one. We assume a broad Gaussian prior on \hubble, $\prob(\hubble)=\normal(70,20)$ \kmsmpc, a truncated Gaussian prior on \decel, $\prob(\decel)=\step(\decel+2)\step(1-\decel)\normal(-0.5,0.5)$, and a log-uniform prior on the rate, $\prob(\rate) \propto 1/\rate$. To use \texttt{pystan}, we must be able to sample all parameters from analytic distributions. We therefore perform a Gaussian Mixture Model fit to each merger's marginal distance likelihood using \texttt{pomegranate}~\cite{Schreiber:2017}. We fit each likelihood with an integer grid of 2-10 mixture components, repeating 10 times at each grid point and selecting the best fit using the Akaike Information Criterion~\cite{Akaike:1974}. Finally, we must evaluate the expected number of detected mergers $\nexp$ at each sampled value of the cosmological and population parameters. We do so by re-simulating the catalogues 100 times at each point of a 5x5 grid in $\{H_0,q_0\}$ assuming our fiducial rate, and interpolating the results using a 2D fourth-order interpolant. The dependence on the sampled rate is captured by multiplying the interpolation coefficients by $\Gamma/\Gamma_{\rm fid}$. The resulting 153/193-dimensional \texttt{pystan} inference runs take less than a minute to generate 20,000 well converged samples on a 3.1 GHz Intel Core i7 CPU. The set of true redshifts and peculiar velocities are uninteresting for the purposes of cosmology inference, and we therefore marginalize over these parameters when quoting the results below.
 
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
 
