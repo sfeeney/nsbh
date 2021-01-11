@@ -1,0 +1,16 @@
+Dear Editor
+
+We are submitting our manuscript "Prospects for Measuring the Hubble Constant with Neutron-Star-Black-Hole Mergers" for consideration for publication in Physical Review Letters. Please find attached a 100 word summary describing how this manuscript fits the Physical Review Letters criteria.
+
+Kind regards
+
+Stephen Feeney
+Hiranya Peiris
+Samaya Nissanke
+Daniel Mortlock
+
+* * * * *
+
+Explaining the tension between local and high-redshift estimates of the Universe’s expansion rate is imperative, revealing whether the standard cosmology is wrong or flagship cosmological data are contaminated by systematics. Resolution requires a direct, independent local rate measurement, which could be provided by multi-messenger observations of neutron-star-black-hole (NSBH) mergers. Using end-to-end analyses of realistic simulated NSBH populations, incorporating gravitational-wave and electromagnetic selection for the first time, we show that NSBHs can constrain the rate with the required precision by 2030. The achievable precision is, however, strongly affected by the detailed physics of the merger, highlighting the need for improved modeling.
+
+* * * * *
