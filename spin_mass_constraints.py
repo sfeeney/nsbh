@@ -27,6 +27,18 @@ def chirp_q_to_comp_masses(m_c, q_inv):
 
     return m_1, m_2
 
+def prior_change_jac(m_c, q_inv):
+
+    d_m_1_d_m_c = (1.0 + q_inv) ** 0.2 / q_inv ** 0.6
+    d_m_2_d_m_c = (1.0 + q_inv) ** 0.2 * q_inv ** 0.4
+    d_m_1_d_q_inv = -(3.0 + 2.0 * q_inv) * m_c / 5.0 / \
+                    q_inv ** 1.6 * (1.0 + q_inv) ** 0.8
+    d_m_2_d_q_inv = (2.0 + 3.0 * q_inv) * m_c / 5.0 / \
+                    q_inv ** 0.6 * (1.0 + q_inv) ** 0.8
+    jac = np.abs(d_m_1_d_m_c * d_m_2_d_q_inv - \
+                 d_m_1_d_q_inv * d_m_2_d_m_c)
+    return jac
+
 # plot settings
 lw = 1.5
 mp.rc('font', family = 'serif')
@@ -48,6 +60,7 @@ else:
     ifo_list = ['H1+', 'L1+', 'V1+', 'K1+', 'A1']
 use_polychord = True
 use_weighted_samples = False
+imp_sample = True
 if use_polychord:
     n_live = 1000 # 500
 else:
@@ -63,7 +76,7 @@ uniform_bh_masses = True
 uniform_ns_masses = True
 low_metals = True
 broad_bh_spins = True
-seobnr_waveform = True
+seobnr_waveform = False
 if seobnr_waveform:
     waveform_approximant = 'SEOBNRv4_ROM_NRTidalv2_NSBH'
     aligned_spins = True
@@ -167,10 +180,7 @@ else:
     i_sort = np.argsort(snrs)[::-1]
     target_snrs = snrs[i_sort]
     target_ids = ids[i_sort]
-
-#for i in range(len(target_ids)):
-#    print(i + 1, target_ids[i], target_snrs[i])
-#exit()
+    target_iotas = raw_pars['inclination'][i_sort]
 
 # loop over targets
 n_targets = len(target_ids)
@@ -191,8 +201,6 @@ for i in range(n_targets):
         label += '_fixed_ang'
     if n_live != 1000:
         label += '_nlive_{:04d}'.format(n_live)
-    #label = label_str.format(target_ids[i], duration, minimum_frequency, \
-    #                         reference_frequency)
     res_file = label + '_result.json'
     print(osp.join(outdir, res_file))
     if not osp.exists(osp.join(outdir, res_file)):
@@ -201,17 +209,13 @@ for i in range(n_targets):
         truths.append(None)
         continue
     result = bilby.result.read_in_result(filename=osp.join(outdir, res_file))
-    '''truths.append([result.injection_parameters['mass_1'], \
-                   result.injection_parameters['a_1'], 0.0, \
-                   result.injection_parameters['iota'], \
-                   result.injection_parameters['luminosity_distance'], \
-                   result.injection_parameters['mass_ratio'], \
-                   result.injection_parameters['lambda_2'], \
-                   result.injection_parameters['lambda_tilde']])'''
+
+    # NB: result.injection_parameters contains incorrect IMRPhenom iotas
+    # due to a bug in bilby!
     all_pars = bc.generate_all_bns_parameters(result.injection_parameters)
     truths.append([all_pars['mass_1'], \
                    all_pars['a_1'], 0.0, \
-                   all_pars['iota'], \
+                   target_iotas[i], \
                    all_pars['luminosity_distance'], \
                    all_pars['mass_ratio'], \
                    all_pars['lambda_2'], \
@@ -231,6 +235,7 @@ for i in range(n_targets):
             template = 'nsbh_precess_spins.paramnames'
         gd_root = osp.join(outdir, osp.join('chains', label))
         gd_pars = gd_root + '.paramnames'
+        print(gd_pars)
         if not osp.exists(gd_pars):
             os.symlink(template, gd_pars)
 
@@ -241,12 +246,43 @@ for i in range(n_targets):
                                           pars.mass_ratio)
         gd_samples.addDerived(m_1, name='mass_1', label='m_1')
         gd_samples.addDerived(m_2, name='mass_2', label='m_2')
-        gd_samples.addDerived(np.abs(pars.chi_1), name='a_1', label='a_1')
+        if aligned_spins:
+            gd_samples.addDerived(np.abs(pars.chi_1), name='a_1', label='a_1')
+
+        # optionally importance sample the input mass priors
+        if imp_sample:
+
+            # extract posterior samples relevant for reweighting
+            m_c_samples = pars.chirp_mass
+            q_inv_samples = pars.mass_ratio
+            m_1_samples, m_2_samples = \
+                chirp_q_to_comp_masses(m_c_samples, q_inv_samples)
+
+            # define importance weights. we want to convert from the 
+            # prior we used to sample, which is uniform in chirp mass 
+            # and mass to the prior we used to simulate, which is 
+            # uniform in component masses. we technically used a different
+            # redshift prior too, but they're almost identical in practice.
+            # note that our sampling prior extends into regions where the 
+            # component-mass prior is zero: apply tiny weights to these 
+            # values
+            mass_weights = prior_change_jac(m_c_samples, q_inv_samples)
+            m_1_mask = np.logical_and(m_1_samples >= m_min_bh, \
+                                      m_1_samples <= m_max_bh)
+            m_2_mask = np.logical_and(m_2_samples >= m_min_ns, \
+                                      m_2_samples <= m_max_ns)
+            m12_mask = np.logical_and(m_1_mask, m_2_mask)
+            mass_weights *= m12_mask
+            mass_weights += ~m12_mask * 1.0e-10
+            weights = mass_weights / np.sum(mass_weights)
+            gd_samples.reweightAddingLogLikes(-np.log(weights))
+
+        # build up list of samples objects
         samples.append(gd_samples)
 
     else:
         
-        # convert to GetDist MCSamples object
+        # test posterior is correctly sampled
         distance_label = r'(d_L - d_L^{\rm true})/d_L^{\rm true}'
         try:
             delta_distance = \
@@ -257,6 +293,40 @@ for i in range(n_targets):
             skip[i] = True
             samples.append(None)
             continue
+
+        # optionally importance sample the input mass priors
+        if imp_sample:
+
+            # extract posterior samples relevant for reweighting
+            m_c_samples = result.posterior.chirp_mass
+            q_inv_samples = result.posterior.mass_ratio
+            m_1_samples, m_2_samples = \
+                chirp_q_to_comp_masses(m_c_samples, q_inv_samples)
+
+            # define importance weights. we want to convert from the 
+            # prior we used to sample, which is uniform in chirp mass 
+            # and mass to the prior we used to simulate, which is 
+            # uniform in component masses. we technically used a different
+            # redshift prior too, but they're almost identical in practice.
+            # note that our sampling prior extends into regions where the 
+            # component-mass prior is zero: apply tiny weights to these 
+            # values
+            mass_weights = prior_change_jac(m_c_samples, q_inv_samples)
+            m_1_mask = np.logical_and(m_1_samples >= m_min_bh, \
+                                      m_1_samples <= m_max_bh)
+            m_2_mask = np.logical_and(m_2_samples >= m_min_ns, \
+                                      m_2_samples <= m_max_ns)
+            m12_mask = np.logical_and(m_1_mask, m_2_mask)
+            mass_weights *= m12_mask
+            mass_weights += ~m12_mask * 1.0e-10
+            weights = mass_weights / np.sum(mass_weights)
+
+        else:
+
+            weights = np.ones(len(result.posterior.luminosity_distance))
+            weights /= np.sum(weights)
+
+        # convert to GetDist MCSamples object
         if aligned_spins:
             gd_samples = np.array([result.posterior.a_1, \
                                    result.posterior.mass_1, \
@@ -275,7 +345,7 @@ for i in range(n_targets):
                                                 distance_label, r'\iota', \
                                                 'm_2/m_1', r'\Lambda_{\rm NS}', \
                                                 r'\tilde{\Lambda}', r'\chi_1'], \
-                                        ranges=gd_ranges))
+                                        ranges=gd_ranges, weights=weights))
         else:
             gd_samples = np.array([result.posterior.a_1, \
                                    result.posterior.mass_1, \
@@ -283,17 +353,18 @@ for i in range(n_targets):
                                    result.posterior.iota, \
                                    result.posterior.mass_ratio, \
                                    result.posterior.lambda_2, \
-                                   result.posterior.lambda_tilde]).T
+                                   result.posterior.lambda_tilde, \
+                                   result.posterior.spin_1z]).T
             samples.append(gd.MCSamples(samples=gd_samples, \
                                         names=['a_1', 'mass_1', \
                                                'distance', 'iota', \
                                                'q', 'lambda_2', \
-                                               'lambda_tilde'], \
+                                               'lambda_tilde', 'chi_1'], \
                                         labels=['a_1', 'm_1', \
                                                 distance_label, r'\iota', \
                                                 'm_2/m_1', r'\Lambda_{\rm NS}', \
-                                                r'\tilde{\Lambda}'], \
-                                        ranges=gd_ranges))
+                                                r'\tilde{\Lambda}', r'\chi_1'], \
+                                        ranges=gd_ranges, weights=weights))
 
 # snr-ordered colouring
 n_targets = len(samples)
@@ -303,6 +374,10 @@ cols = [mpc.rgb2hex(cm(x)) for x in np.linspace(0.2, 0.8, n_targets)[::-1]]
 # tweak output filename
 if use_polychord:
     base_label = 'pc_' + base_label
+if imp_sample:
+    base_label = base_label + '_imp_sample'
+if use_polychord and use_weighted_samples:
+    base_label = base_label + '_weighted_samples'
 
 # single-axis BH mass-spin plot
 fig, ax = mp.subplots()
@@ -356,7 +431,8 @@ for i in range(n_row * n_col):
             continue
 
         # plot mass and spin constraints
-        if not aligned_spins:
+        #if not aligned_spins:
+        if aligned_spins:
             g.plot_2d(samples[i], 'mass_1', 'chi_1', colors=[cols[i]], \
                       ax=axes[i_y, i_x], filled=True)
             axes[i_y, i_x].plot([truths[i][0]], [truths[i][8]], \
@@ -370,16 +446,13 @@ for i in range(n_row * n_col):
         axes[i_y, i_x].text(0.95, 0.95, label, ha='right', va='top', \
                             transform=axes[i_y, i_x].transAxes)
         axes[i_y, i_x].grid(False)
-        axes[i_y, i_x].set_xlim(m_min_bh, m_max_bh)
-        if not aligned_spins:
+        axes[i_y, i_x].set_xlim(m_min_bh, 23.0) #m_max_bh)
+        if aligned_spins:
             axes[i_y, i_x].set_ylim(-spin_max_bh, spin_max_bh)
         else:
-            axes[i_y, i_x].set_ylim(spin_min_bh, spin_max_bh)
-        #axes[i_y, i_x].set_xticks([5.0, 7.0, 9.0])
-        #axes[i_y, i_x].set_yticks([0.1, 0.3, 0.5, 0.7])
-        
-        axes[i_y, i_x].set_xlim(m_min_bh, 18.0)
-        axes[i_y, i_x].set_ylim(0.1, spin_max_bh)
+            #axes[i_y, i_x].set_ylim(spin_min_bh, spin_max_bh)
+            #axes[i_y, i_x].set_yticks([0.1, 0.3, 0.5, 0.7])
+            axes[i_y, i_x].set_ylim(0.1, spin_max_bh)
 
         # remove axis labels where they would otherwise overlap
         if i_x > 0:
@@ -403,8 +476,6 @@ for i in range(n_row * n_col):
 fig.subplots_adjust(wspace=0.0, hspace=0.0)
 fig.savefig(osp.join(outdir, base_label + '_spin_mass_constraints.pdf'), \
             bbox_inches='tight')
-exit()
-
 
 # also generate a distance plot
 fig, axes = mp.subplots(n_row, n_col, figsize=(20, height))
