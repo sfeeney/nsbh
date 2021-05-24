@@ -5,8 +5,9 @@ import bilby.gw.conversion as bc
 import matplotlib.pyplot as mp
 import matplotlib.cm as mpcm
 import matplotlib.colors as mpc
-import os as os
+import os
 import os.path as osp
+import errno
 import getdist as gd
 import getdist.plots as gdp
 import copy
@@ -480,7 +481,17 @@ for i in range(n_targets):
         gd_pars = gd_root + '.paramnames'
         #print(gd_pars)
         if not osp.exists(gd_pars):
-            os.symlink(template, gd_pars)
+
+            # prevent race conditions: can have all processes trying 
+            # to create a symlink simultaneously, with the slow ones
+            # finding it's already been created despite not existing 
+            # before this if statement
+            try:
+                os.symlink(template, gd_pars)
+            except OSError, e:
+                if e.errno != errno.EEXIST:
+                    raise e
+            
 
         # read in samples and fill in derived parameters
         gd_samples = gd.loadMCSamples(gd_root)
