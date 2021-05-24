@@ -488,7 +488,7 @@ for i in range(n_targets):
             # before this if statement
             try:
                 os.symlink(template, gd_pars)
-            except OSError, e:
+            except OSError as e:
                 if e.errno != errno.EEXIST:
                     raise e
             
