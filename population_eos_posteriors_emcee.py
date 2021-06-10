@@ -10,9 +10,11 @@ import os.path as osp
 import errno
 import getdist as gd
 import getdist.plots as gdp
+import corner
 import copy
 import lalsimulation as lalsim
 import sys
+import sklearn.decomposition as skd
 #import matplotlib
 #matplotlib.use('TkAgg')
 
@@ -204,6 +206,194 @@ def lal_inf_sd_gammas_mass_to_lambda(gammas, mass_m_sol):
     
     return 2.0 / 3.0 * love / comp ** 5
 
+def lal_inf_sd_gammas_fam(gammas):
+
+    '''
+    Modified from LALInferenceSDGammasMasses2Lambdas:
+    https://lscsoft.docs.ligo.org/lalsuite/lalinference/_l_a_l_inference_8c_source.html#l02364
+    '''
+
+    # create EOS & family
+    eos = lalsim.SimNeutronStarEOS4ParameterSpectralDecomposition(*gammas)
+    fam = lalsim.CreateSimNeutronStarFamily(eos)
+    
+    return fam
+
+def lal_inf_sd_gammas_mass_to_lambda(fam, mass_m_sol):
+
+    '''
+    Modified from LALInferenceSDGammasMasses2Lambdas:
+    https://lscsoft.docs.ligo.org/lalsuite/lalinference/_l_a_l_inference_8c_source.html#l02364
+    '''
+
+    # calculate lambda(m|eos)
+    mass_kg = mass_m_sol * m_sol_kg
+    rad = lalsim.SimNeutronStarRadius(mass_kg, fam)
+    love = lalsim.SimNeutronStarLoveNumberK2(mass_kg, fam)
+    comp = big_g * mass_kg / (c ** 2) / rad
+    
+    return 2.0 / 3.0 * love / comp ** 5
+
+def emcee_log_prior(gammas):
+
+    # check gammas are in appropriate range
+    for i in range(n_inds):
+
+        if gammas[i] < prior_ranges[i][0] or \
+           gammas[i] > prior_ranges[i][1]:
+
+           return -np.inf
+
+    # check if physical using LAL code, which is much quicker
+    try:
+        is_phys = lal_inf_eos_physical_check(gammas)
+    except:
+        print('LAL error')
+        return -np.inf
+    if not is_phys:
+
+        return -np.inf
+
+    else:
+
+        return 0.0
+
+def emcee_log_post(gammas):
+
+    # first call prior and immediately return if non-physical EOS
+    log_prior = emcee_log_prior(gammas)
+    if not np.isfinite(log_prior):
+        return log_prior
+
+    # calculate log-likelihood. this is a numerical integration
+    # over each merger's mass-lambda likelihood.
+    log_like = 0.0
+    n_grid = 1000 # @TODO: test this out. 100, 1000 and 10000 agree pretty well
+    lambdas = np.zeros(n_grid)
+    likes = np.zeros(n_grid)
+
+    # use gammas to define mass grid for integration
+    fam = lal_inf_sd_gammas_fam(gammas)
+    m_max_eos = lalsim.SimNeutronStarMaximumMass(fam) / m_sol_kg
+    masses = np.linspace(m_min_ns, m_max_eos * 0.99999999, n_grid)
+
+    # calculate lambdas on that grid
+    for j in range(n_grid):
+        lambdas[j] = lal_inf_sd_gammas_mass_to_lambda(fam, masses[j])
+
+    # loop over targets performing integrals
+    for k in range(n_targets):
+
+        for j in range(n_grid):
+
+            likes[j] = m_l_ns_posts[k](masses[j], lambdas[j])[0, 0]
+
+        # correct for -ve spline likelihoods and integrate
+        neg_like = likes < 0.0
+        likes[neg_like] = 0.0
+        integral = np.trapz(likes, masses)
+        log_like += np.log(integral)
+
+    # @TODO: mass prior volume effect!
+
+    # return log-posterior
+    return log_prior + log_like
+
+
+def emcee_log_prior_wysocki(thetas):
+
+    # check projected gammas are in appropriate range
+    for i in range(n_inds):
+
+        if thetas[i] < gammas_rs_tf_min[i] * 1.1 or \
+           thetas[i] > gammas_rs_tf_max[i] * 1.1:
+
+           return -np.inf
+
+    # deproject
+    gammas = gammas_std * pca.inverse_transform(thetas) + \
+             gammas_mean
+
+    # check if physical using LAL code, which is much quicker
+    try:
+        is_phys = lal_inf_eos_physical_check(gammas)
+    except:
+        print('LAL error')
+        return -np.inf
+    if not is_phys:
+
+        return -np.inf
+        
+    else:
+
+        return 0.0
+
+def emcee_log_post_wysocki(thetas):
+
+    # evaluate prior within this function to save a second 
+    # deprojection. first check projected gammas are in 
+    # appropriate range
+    for i in range(n_inds):
+
+        if thetas[i] < gammas_rs_tf_min[i] * 1.1 or \
+           thetas[i] > gammas_rs_tf_max[i] * 1.1:
+
+           return -np.inf
+
+    # deproject
+    gammas = gammas_std * pca.inverse_transform(thetas) + \
+             gammas_mean
+
+    # check if physical using LAL code, which is much quicker
+    try:
+        is_phys = lal_inf_eos_physical_check(gammas)
+    except:
+        print('LAL error')
+        return -np.inf
+    if not is_phys:
+        return -np.inf
+    else:
+        log_prior = 0.0
+
+    # calculate log-likelihood. this is a numerical integration
+    # over each merger's mass-lambda likelihood.
+    log_like = 0.0
+    n_grid = 1000 # @TODO: test this out. 100, 1000 and 10000 agree pretty well
+    lambdas = np.zeros(n_grid)
+    likes = np.zeros(n_grid)
+
+    # use gammas to define mass grid for integration
+    fam = lal_inf_sd_gammas_fam(gammas)
+    m_max_eos = lalsim.SimNeutronStarMaximumMass(fam) / m_sol_kg
+    masses = np.linspace(m_min_ns, m_max_eos * 0.99999999, n_grid)
+
+    # calculate lambdas on that grid
+    for j in range(n_grid):
+        lambdas[j] = lal_inf_sd_gammas_mass_to_lambda(fam, masses[j])
+
+    # loop over targets performing integrals
+    for k in range(n_targets):
+
+        for j in range(n_grid):
+
+            likes[j] = m_l_ns_posts[k](masses[j], lambdas[j])[0, 0]
+
+        # correct for -ve spline likelihoods and integrate
+        neg_like = likes < 0.0
+        likes[neg_like] = 0.0
+        integral = np.trapz(likes, masses)
+        log_like += np.log(integral)
+
+    # @TODO: mass prior volume effect!
+
+    # return log-posterior
+    return log_prior + log_like
+
+def dd2_lambda_from_mass(m):
+    return 1.60491e6 - 23020.6 * m**-5 + 194720. * m**-4 - 658596. * m**-3 \
+        + 1.33938e6 * m**-2 - 1.78004e6 * m**-1 - 992989. * m + 416080. * m**2 \
+        - 112946. * m**3 + 17928.5 * m**4 - 1263.34 * m**5
+
 
 # plot settings
 lw = 1.5
@@ -236,21 +426,24 @@ log_zero = -1.0e10
 #        EOS-specific range each time? 3) do we need to adjust 
 #        the prior volume each time?
 # @TODO: KDE version
-# @TODO: store Lambdas too?
 # @TODO: skip duff IMRPhenom run
 # @TODO: store log prior separately
 # @TODO: parallelize w/ MPI
-# @TODO: plot highest-weighted EOS samples on m vs Lambda posterior
 
 
 # EOS inference settings
-n_samples = 12 # 160 # @TODO: update w/ mass samples too
-n_m_samples = 50 # 100
-m_r_alpha = 0.5 # @TODO: check if needed
 n_inds = 4
 prior_ranges = [[0.2, 2.0], [-1.6, 1.7], [-0.6, 0.6], [-0.02, 0.02]]
 c_s_max = 1.1
 ns_mass_max_kg = 1.97 * m_sol_kg
+reparam = True
+emcee_sample = True
+if emcee_sample:
+    import emcee
+    n_walkers = 2 * n_inds
+else:
+    n_samples = 12 # 160 # @TODO: update w/ mass samples too
+    n_m_samples = 100
 
 # data sample settings
 use_mpi = False
@@ -282,7 +475,7 @@ uniform_bh_masses = True
 uniform_ns_masses = True
 low_metals = True
 broad_bh_spins = True
-seobnr_waveform = True
+seobnr_waveform = False
 if seobnr_waveform:
     waveform_approximant = 'SEOBNRv4_ROM_NRTidalv2_NSBH'
     aligned_spins = True
@@ -665,107 +858,240 @@ for i in range(n_targets):
     m_l_ns_posts.append(m_l_ns_post)
 
 
-# draw potential SD EOSs
-all_gammas = []
-gammas = np.zeros(n_inds)
-masses = np.zeros(n_targets)
-n_samples_tot = n_samples * n_m_samples
-pop_samples = np.zeros((n_inds + n_targets, n_samples_tot))
-log_weights = np.zeros(n_samples_tot)
-log_priors = np.zeros(n_samples_tot)
-i = 0
-n_rej = 0
-while i < n_samples:
+# choose inference algorithm: emcee or MC integration
+if emcee_sample:
 
-    # draw random samples from SD priors
-    for j in range(n_inds):
+    # use Wysocki et al (2001.01747) reparametrization
+    if reparam:
 
-        gammas[j] = npr.uniform(prior_ranges[j][0], \
-                                prior_ranges[j][1])
+        # read from file
+        gammas = np.genfromtxt('data/ns_eos_sd_gammas_wysocki.txt', \
+                               delimiter=',')
 
-    # check if physical using LAL code, which is much quicker
-    if not lal_inf_eos_physical_check(gammas):
-        continue
+        # rescale to ~unit normal, then PCA
+        gammas_mean = np.mean(gammas, axis=0)
+        gammas_std = np.std(gammas, axis=0)
+        gammas_rs = (gammas - gammas_mean) / gammas_std
+        pca = skd.PCA(n_components=n_inds)
+        pca.fit(gammas_rs)
 
-    # calculate maximum mass allowed by EOS: don't allow prior draws 
-    # beyond this limit
-    eos = lalsim.SimNeutronStarEOS4ParameterSpectralDecomposition(*gammas)
-    fam = lalsim.CreateSimNeutronStarFamily(eos)
-    m_max_eos = lalsim.SimNeutronStarMaximumMass(fam) / m_sol_kg
+        # project gammas onto PCA basis to obtain bounds
+        gammas_rs_tf = pca.transform(gammas_rs)
+        gammas_rs_tf_min = np.min(gammas_rs_tf, axis=0)
+        gammas_rs_tf_max = np.max(gammas_rs_tf, axis=0)
 
-    # loop over mass draws per EOS
-    for k in range(n_m_samples):
+        # set up walker initial conditions. the official guidance is 
+        # to initialize a tight ball of walkers near the ML solution.
+        # i've not implemented that here. the first set of commented 
+        # lines are a small ball near the prior mean. the second spreads
+        # the walkers across the prior. when sampling the prior, the 
+        # former gives hardly any non-physical EOSs but then takes time 
+        # to spread across the range. the latter is well spread out 
+        # from the start, but produces more non-physical EOSs.
+        # @TODO: could fit the true gammas, transform to the PCA space
+        # and initialize around there?
+        #mu = (gammas_rs_tf_min + gammas_rs_tf_max) / 2.0
+        #sigma = np.diag(((gammas_rs_tf_min - gammas_rs_tf_max) / 10.0) ** 2)
+        #gammas_0 = npr.multivariate_normal(mu, sigma, 10)    
+        init_pars = np.zeros((n_walkers, n_inds))
+        for j in range(n_inds):
+            init_pars[:, j] = npr.uniform(gammas_rs_tf_min[j] * 1.1, \
+                                          gammas_rs_tf_max[j] * 1.1, \
+                                          n_walkers)
 
-        # sample neutron star masses from most efficient range. this 
-        # is from the greater of m_min_ns and m_ns_like_support[j][0] 
-        # (which is automatically satisfied in the calculation of 
-        # m_ns_like_support) to the lesser of m_max_eos and 
-        # m_ns_like_support[j][1]. the weights must then be adjusted 
-        # to account for the restricted prior range used, which 
-        # should be m_min_ns -> m_max_eos
-        i_tot = i * n_m_samples + k
-        for j in range(n_targets):
-            m_max_sample = min(m_ns_like_support[j][1], m_max_eos)
-            masses[j] = npr.uniform(m_ns_like_support[j][0], m_max_sample)
-            #prior_norm_used = 1.0 / (m_max_sample - m_ns_like_support[j][0])
-            prior_norm_true = 1.0 / (m_max_eos - m_min_ns)
-            #log_weights[i_tot] += np.log(prior_norm_true / prior_norm_used)
-            log_priors[i_tot] += np.log(prior_norm_true)
+    else:
 
-        # store sampled parameters
-        pop_samples[0: n_inds, i_tot] = gammas[:]
-        pop_samples[n_inds:, i_tot] = masses[:]
+        # initialize walkers near prior mean. see comment above.
+        mu = np.array([1.0, 0.0, 0.0, 0.0])
+        sigma = np.diag([0.01, 0.01, 0.01, 0.001]) ** 2
+        init_pars = npr.multivariate_normal(mu, sigma, n_walkers)
 
-        # calculate the tidal deformability for each 
-        # sampled mass and add the log-likelihood to the log-weights
-        for j in range(n_targets):
+    # set up sampler
+    if reparam:
+        print('PCA sampling')
+        max_n_samples = 20000
+        sampler = emcee.EnsembleSampler(n_walkers, n_inds, \
+                                        emcee_log_post_wysocki)
+    else:
+        print('direct gamma sampling. this is probably a bad idea.')
+        max_n_samples = 100000
+        sampler = emcee.EnsembleSampler(n_walkers, n_inds, emcee_log_prior)
 
-            lambda_lal = lal_inf_sd_gammas_mass_to_lambda(gammas, masses[j])
-            like = m_l_ns_posts[j](masses[j], lambda_lal)[0, 0]
-            if like < 0.0:
-                log_weights[i_tot] = log_zero
-                continue
-            else:
-                log_weights[i_tot] += np.log(like)
 
-            # @TODO: make sure -ve weights happen where expected?
+    # sample, following emcee's monitoring and convergence example
+    # (https://emcee.readthedocs.io/en/stable/tutorials/monitor/).
+    # sample for up to max_n_samples iterations, checking convergence
+    # every max_n_samples / 1000 samples. 
+    i_sample = 0
+    n_check = max(1, int(max_n_samples / 1000))
+    autocorr = np.empty(max_n_samples)
+    old_tau = np.inf
+    for sample in sampler.sample(init_pars, iterations=max_n_samples, \
+                                 progress=True):
 
-    # increment
-    i += 1
-        
+        # check convergence
+        if sampler.iteration % n_check:
+            continue
 
-    '''
-    # maximum mass
-    eos = lalsim.SimNeutronStarEOS4ParameterSpectralDecomposition(*gammas)
-    fam = lalsim.CreateSimNeutronStarFamily(eos)
-    m_max = lalsim.SimNeutronStarMaximumMass(fam) / m_sol_kg
-    n_grid = 100
-    m_grid = np.linspace(1.0, 0.999 * m_max, n_grid)
-    r_grid = np.zeros(n_grid)
-    for j in range(n_grid):
-        r_grid[j] = lalsim.SimNeutronStarRadius(m_grid[j] * m_sol_kg, fam)
+        # Compute the autocorrelation time so far
+        # Using tol=0 means that we'll always get an estimate even
+        # if it isn't trustworthy
+        tau = sampler.get_autocorr_time(tol=0)
+        autocorr[i_sample] = np.mean(tau)
+        i_sample += 1
+
+        # Check convergence
+        converged = np.all(tau * 100 < sampler.iteration)
+        converged &= np.all(np.abs(old_tau - tau) / tau < 0.01)
+        if converged:
+            break
+        old_tau = tau
+
+    # store samples, reprojecting if necessary
+    samples = sampler.get_chain(flat=True)
+    if reparam:
+        gamma_samples = gammas_std * pca.inverse_transform(samples) + \
+                        gammas_mean
+    else:
+        gamma_samples = samples
+    log_probs = sampler.get_log_prob(flat=True)
+    all_samples = np.concatenate((gamma_samples, log_probs[:, None]), axis=1)
+    print(all_samples.shape)
+    filename = osp.join(outdir, base_label + '_eos_emcee_samples.txt')
+    np.savetxt(filename, all_samples)
+
+    # plot convergence
+    n = n_check * np.arange(1, i_sample + 1)
+    y = autocorr[:i_sample]
+    fig, ax = mp.subplots(1, 1)
+    mp.plot(n, n / 100.0, "--k")
+    mp.plot(n, y)
+    #mp.xlim(0, n.max())
+    #mp.ylim(0, y.max() + 0.1 * (y.max() - y.min()))
+    mp.xlabel("number of steps")
+    mp.ylabel(r"mean $\hat{\tau}$")
+    filename = osp.join(outdir, base_label + '_eos_emcee_convergence.pdf')
+    fig.savefig(filename)
+    print(autocorr[:i_sample])
+
+    # corner plot
+    print(np.sum(np.isfinite(log_probs)))
+    fig = corner.corner(gamma_samples, plot_datapoints=True, \
+                        plot_density=False, plot_contours=False)
+    filename = osp.join(outdir, base_label + '_eos_emcee_post.pdf')
+    fig.savefig(filename)
+
+
+    # @TODO: find out / fit for best gammas for DD2 for overlaying & init
+    # @TODO: multi-processing
+
+    exit()
+
+
+else:
+
+
+    # draw potential SD EOSs
+    all_gammas = []
+    gammas = np.zeros(n_inds)
+    masses = np.zeros(n_targets)
+    n_samples_tot = n_samples * n_m_samples
+    pop_samples = np.zeros((n_inds + n_targets, n_samples_tot))
+    log_weights = np.zeros(n_samples_tot)
+    log_priors = np.zeros(n_samples_tot)
+    i = 0
+    n_rej = 0
+    while i < n_samples:
+
+        # draw random samples from SD priors
+        for j in range(n_inds):
+
+            gammas[j] = npr.uniform(prior_ranges[j][0], \
+                                    prior_ranges[j][1])
+
+        # check if physical using LAL code, which is much quicker
+        if not lal_inf_eos_physical_check(gammas):
+            continue
+
+        # calculate maximum mass allowed by EOS: don't allow prior draws 
+        # beyond this limit
+        eos = lalsim.SimNeutronStarEOS4ParameterSpectralDecomposition(*gammas)
+        fam = lalsim.CreateSimNeutronStarFamily(eos)
+        m_max_eos = lalsim.SimNeutronStarMaximumMass(fam) / m_sol_kg
+
+        # loop over mass draws per EOS
+        for k in range(n_m_samples):
+
+            # sample neutron star masses from most efficient range. this 
+            # is from the greater of m_min_ns and m_ns_like_support[j][0] 
+            # (which is automatically satisfied in the calculation of 
+            # m_ns_like_support) to the lesser of m_max_eos and 
+            # m_ns_like_support[j][1]. the weights must then be adjusted 
+            # to account for the restricted prior range used, which 
+            # should be m_min_ns -> m_max_eos
+            i_tot = i * n_m_samples + k
+            for j in range(n_targets):
+                m_max_sample = min(m_ns_like_support[j][1], m_max_eos)
+                masses[j] = npr.uniform(m_ns_like_support[j][0], m_max_sample)
+                #prior_norm_used = 1.0 / (m_max_sample - m_ns_like_support[j][0])
+                prior_norm_true = 1.0 / (m_max_eos - m_min_ns)
+                #log_weights[i_tot] += np.log(prior_norm_true / prior_norm_used)
+                log_priors[i_tot] += np.log(prior_norm_true)
+
+            # store sampled parameters
+            pop_samples[0: n_inds, i_tot] = gammas[:]
+            pop_samples[n_inds:, i_tot] = masses[:]
+
+            # calculate the tidal deformability for each 
+            # sampled mass and add the log-likelihood to the log-weights
+            for j in range(n_targets):
+
+                lambda_lal = lal_inf_sd_gammas_mass_to_lambda(gammas, masses[j])
+                like = m_l_ns_posts[j](masses[j], lambda_lal)[0, 0]
+                if like < 0.0:
+                    log_weights[i_tot] = log_zero
+                    continue
+                else:
+                    log_weights[i_tot] += np.log(like)
+
+                # @TODO: make sure -ve weights happen where expected?
+
+        # increment
+        i += 1
+            
+
         '''
+        # maximum mass
+        eos = lalsim.SimNeutronStarEOS4ParameterSpectralDecomposition(*gammas)
+        fam = lalsim.CreateSimNeutronStarFamily(eos)
+        m_max = lalsim.SimNeutronStarMaximumMass(fam) / m_sol_kg
+        n_grid = 100
+        m_grid = np.linspace(1.0, 0.999 * m_max, n_grid)
+        r_grid = np.zeros(n_grid)
+        for j in range(n_grid):
+            r_grid[j] = lalsim.SimNeutronStarRadius(m_grid[j] * m_sol_kg, fam)
+            '''
 
-# save to file
-filename = osp.join(outdir, \
-                    base_label + \
-                    '_eos_samples_{:d}_of_{:d}.txt'.format(rank, n_procs))
-np.savetxt(filename, np.vstack((log_weights, log_priors, pop_samples)).T)
-
-
-# normalize weights
-log_weights = log_weights - np.max(log_weights)
-log_weights_norm = np.log(np.sum(np.exp(log_weights)))
-log_weights = log_weights - log_weights_norm
-weights = np.exp(log_weights)
-n_eff = np.exp(-np.sum(weights * log_weights))
-print(rank, n_eff)
-
-
-exit()
+    # save to file
+    filename = osp.join(outdir, \
+                        base_label + \
+                        '_eos_samples_{:d}_of_{:d}.txt'.format(rank, n_procs))
+    np.savetxt(filename, np.vstack((log_weights, log_priors, pop_samples)).T)
 
 
-# @TODO: might need more compression in data storage
-# e.g. only store summed over masses
-# but also store lambdas?
+    # normalize weights
+    log_weights = log_weights - np.max(log_weights)
+    log_weights_norm = np.log(np.sum(np.exp(log_weights)))
+    log_weights = log_weights - log_weights_norm
+    weights = np.exp(log_weights)
+    n_eff = np.exp(-np.sum(weights * log_weights))
+    print(rank, n_eff)
+
+
+    exit()
+
+
+    # @TODO: might need more compression in data storage
+    # e.g. only store summed over masses
+    # but also store lambdas?
 
