@@ -16,6 +16,25 @@ import astropy.coordinates as ac
 import astropy.units as au
 import sys
 import pickle
+from pbilby_functions import sample_rwalk_parallel_with_act, plot_current_state, \
+write_current_state, read_saved_state
+from schwimmbad import MPIPool
+from numpy import linalg
+from bilby.core.utils import reflect
+from dynesty.utils import unitcheck
+from bilby.core.prior import Constraint
+import mpi4py
+import dynesty
+import datetime
+import os
+import pickle
+import time
+import dill
+from dynesty import NestedSampler
+import dynesty.plotting as dyplot
+
+mpi4py.rc.threads = False
+mpi4py.rc.recv_mprobe = False
 
 def inverse_transform_precessing_spins(iota, spin_1x, spin_1y, \
                                        spin_1z, spin_2x, spin_2y, \
@@ -23,7 +42,7 @@ def inverse_transform_precessing_spins(iota, spin_1x, spin_1y, \
                                        reference_frequency, phase):
 
     args_list = bu.convert_args_list_to_float(
-        iota, spin_1x, spin_1y, spin_1z, spin_2x, spin_2y, spin_2z, 
+        iota, spin_1x, spin_1y, spin_1z, spin_2x, spin_2y, spin_2z,
         mass_1, mass_2, reference_frequency, phase)
     results = lalsim.SimInspiralTransformPrecessingWvf2PE(*args_list)
     theta_jn, phi_jl, tilt_1, tilt_2, phi_12, a_1, a_2 = (results)
@@ -53,8 +72,8 @@ def allocate_all_jobs(n_jobs, n_procs=1):
         n_j_allocated += n_j_to_allocate
     return allocation
 
-# LAL detector azimuth angles measured clockwise from north. bilby 
-# azimuth angles measured anticlockwise from east. helpful link for 
+# LAL detector azimuth angles measured clockwise from north. bilby
+# azimuth angles measured anticlockwise from east. helpful link for
 # checking: https://www.ligo.org/scientists/GW100916/detectors.txt
 def convert_azimuth(azi):
 
@@ -79,7 +98,6 @@ def comp_masses_to_chirp_q(m_1, m_2):
 # NB: broadening mass prior reduces mergers with non-zero remnant
 
 # settings
-use_mpi = False
 snr_thresh = 12.0
 duration = 32.0 # 8.0
 sampling_frequency = 2048.
@@ -140,8 +158,8 @@ else:
 spin_min_ns = 0.0
 spin_max_ns = 0.05
 
-# settings for tight localisation: known angular position, distance 
-# constrained to be approximately Gaussian by redshift, peculiar 
+# settings for tight localisation: known angular position, distance
+# constrained to be approximately Gaussian by redshift, peculiar
 # velocity and Hubble Constant measurements
 c = 2.998e5
 sig_z_obs = 0.001
@@ -150,26 +168,6 @@ sig_v_rec_obs = np.sqrt((c * sig_z_obs) ** 2 + sig_v_pec_obs ** 2)
 h_0_obs = 67.4
 sig_h_0_obs = 0.50
 
-# set up identical within-chain MPI processes
-if use_mpi:
-    import mpi4py.MPI as mpi
-    n_procs = mpi.COMM_WORLD.Get_size()
-    rank = mpi.COMM_WORLD.Get_rank()
-elif len(sys.argv) > 1:
-    if len(sys.argv) == 3:
-        n_procs = int(sys.argv[1])
-        rank = int(sys.argv[2])
-        if rank > n_procs or rank < 1:
-            exit('ERROR: 1 <= rank <= number of processes.')
-        rank -= 1    
-    else:
-        exit('ERROR: please call using ' + \
-             '"python sim_nsbh_analysis.py <n_procs> <rank>" format ' + \
-             'to specify number of processes and rank without MPI. ' + \
-             'NB: rank should be one-indexed.')
-else:
-    n_procs = 1
-    rank = 0
 
 # filename stub
 if ifo_list == ['H1', 'L1', 'V1']:
@@ -210,7 +208,7 @@ raw_pars = raw_pars[det]
 n_inj = np.sum(det)
 job_list = allocate_jobs(n_inj, n_procs, rank)
 
-# read in random states used to generate data when calculating 
+# read in random states used to generate data when calculating
 # SNRs. this way, detection and inference data are the same.
 with open('data/' + base_label + '_rng_states.bin', 'rb') as f:
     all_rng_states = pickle.load(f)
@@ -230,9 +228,9 @@ if tight_loc:
 for j in range(77, 78):
 
     # find next injection
-    # entries are simulation_id, mass1, mass2, spin1x, spin1y, spin1z, 
-    # spin2x, spin2y, spin2z, distance, inclination, coa_phase, 
-    # polarization, longitude, latitude, geocent_end_time, 
+    # entries are simulation_id, mass1, mass2, spin1x, spin1y, spin1z,
+    # spin2x, spin2y, spin2z, distance, inclination, coa_phase,
+    # polarization, longitude, latitude, geocent_end_time,
     # geocent_end_time_ns, remnant_mass and snr
     # can access these names using raw_pars.dtype.names
     sel_pars = raw_pars[job_list[j]]
@@ -268,8 +266,8 @@ for j in range(77, 78):
         spin_2z = 0.0
 
     # if constraining distance from cosmology and redshift, determine
-    # the distance uncertainty and draw a noisy distance estimate. this 
-    # estimate, along with the distance uncertainty, defines the prior 
+    # the distance uncertainty and draw a noisy distance estimate. this
+    # estimate, along with the distance uncertainty, defines the prior
     # on distance we will use
     if tight_loc:
         sig_d_obs = np.sqrt((sig_h_0_obs / h_0_obs) ** 2 + \
@@ -283,7 +281,7 @@ for j in range(77, 78):
     ra = sc.ra.rad
     dec = sc.dec.rad
 
-    # convert LALInference spin parameters into form desired by 
+    # convert LALInference spin parameters into form desired by
     # waveform generators
     converted = inverse_transform_precessing_spins(iota, spin_1x, spin_1y, \
                                                    spin_1z, spin_2x, spin_2y, \
@@ -328,7 +326,7 @@ for j in range(77, 78):
     # We are going to inject a binary neutron star waveform.  We first establish a
     # dictionary of parameters that includes all of the different waveform
     # parameters, including masses of the black hole (mass_1) and NS (mass_2),
-    # spins of both objects (a, tilt, phi), and deformabilities (lambdas, 
+    # spins of both objects (a, tilt, phi), and deformabilities (lambdas,
     # with the BH deformability fixed to zero) etc.
     injection_parameters = dict(mass_1=mass_1, mass_2=mass_2, a_1=a_1, \
                                 a_2=a_2, tilt_1=tilt_1, tilt_2=tilt_2, \
@@ -354,7 +352,7 @@ for j in range(77, 78):
                                    waveform_arguments=waveform_arguments)
 
     # Set up interferometers.  Default is three interferometers:
-    # LIGO-Hanford (H1), LIGO-Livingston (L1) and Virgo. These default to 
+    # LIGO-Hanford (H1), LIGO-Livingston (L1) and Virgo. These default to
     # their design sensitivity
     all_bilby_ifo_list = ['CE', 'ET', 'GEO600', 'H1', 'K1', 'L1', 'V1']
     bilby_ifo_list = sorted(list(set(ifo_list) & set(all_bilby_ifo_list)))
@@ -375,7 +373,7 @@ for j in range(77, 78):
         start_time=injection_parameters['geocent_time'] + 2 - duration)
     ifos.inject_signal(waveform_generator=waveform_generator, \
                        parameters=injection_parameters)
-    
+
     # Load the default prior for binary neutron stars.
     # We're going to sample in chirp_mass, mass_ratio and lambda_2 for now.
     # BNS have aligned spins by default, so allow precessing spins
@@ -472,16 +470,216 @@ for j in range(77, 78):
     # approach, searching the full parameter space.
     # The conversion function will determine the distance, phase and coalescence
     # time posteriors in post processing.
-    if use_polychord:
-        result = bilby.run_sampler(likelihood=likelihood, priors=priors, \
-                                   sampler='pypolychord', nlive=n_live, \
-                                   injection_parameters=injection_parameters, \
-                                   outdir=outdir, label=label, read_resume=False, \
-                                   conversion_function=bilby.gw.conversion.generate_all_bns_parameters)
+    # cant use polychord for the time being.
+    # if use_polychord:
+    #     result = bilby.run_sampler(likelihood=likelihood, priors=priors, \
+    #                                sampler='pypolychord', nlive=n_live, \
+    #                                injection_parameters=injection_parameters, \
+    #                                outdir=outdir, label=label, read_resume=False, \
+    #                                conversion_function=bilby.gw.conversion.generate_all_bns_parameters)
+    # else:
+def prior_transform_function(u_array):
+    return priors.rescale(sampling_keys, u_array)
+
+def log_likelihood_function(v_array):
+    parameters = {key: v for key, v in zip(sampling_keys, v_array)}
+    if priors.evaluate_constraints(parameters) > 0:
+        likelihood.parameters.update(parameters)
+        return likelihood.log_likelihood()
     else:
-        result = bilby.run_sampler(likelihood=likelihood, priors=priors, \
-                                   sampler='dynesty', npoints=n_live, \
-                                   injection_parameters=injection_parameters, \
-                                   outdir=outdir, label=label, \
-                                   conversion_function=bilby.gw.conversion.generate_all_bns_parameters)
-        result.plot_corner()
+        return np.nan_to_num(-np.inf)
+
+
+def log_prior_function(v_array):
+    params = {key: t for key, t in zip(sampling_keys, v_array)}
+    return priors.ln_prob(params)
+
+
+def reorder_loglikelihoods(unsorted_loglikelihoods, unsorted_samples, sorted_samples):
+    """ Reorders the stored log-likelihood after they have been reweighted
+
+    This creates a sorting index by matching the reweights `result.samples`
+    against the raw samples, then uses this index to sort the
+    loglikelihoods
+
+    Parameters
+    ----------
+    sorted_samples, unsorted_samples: array-like
+        Sorted and unsorted values of the samples. These should be of the
+        same shape and contain the same sample values, but in different
+        orders
+    unsorted_loglikelihoods: array-like
+        The loglikelihoods corresponding to the unsorted_samples
+
+    Returns
+    -------
+    sorted_loglikelihoods: array-like
+        The loglikelihoods reordered to match that of the sorted_samples
+
+
+    """
+
+    idxs = []
+    for ii in range(len(unsorted_loglikelihoods)):
+        idx = np.where(np.all(sorted_samples[ii] == unsorted_samples, axis=1))[0]
+        if len(idx) > 1:
+            print(
+                "Multiple likelihood matches found between sorted and "
+                "unsorted samples. Taking the first match."
+            )
+        idxs.append(idx[0])
+    return unsorted_loglikelihoods[idxs]
+
+
+sampling_keys = []
+for p in priors:
+    if isinstance(priors[p], bilby.core.prior.Constraint):
+        continue
+    if isinstance(priors[p], (int, float)):
+        likelihood.parameters[p] = priors[p]
+    elif priors[p].is_fixed:
+        likelihood.parameters[p] = priors[p].peak
+    else:
+        sampling_keys.append(p)
+
+t0 = datetime.datetime.now()
+sampling_time = 0
+check_point_deltaT = 10
+n_check_point = 5000 #check point frequency
+logger.info("Using the parallel-bilby-implemented rwalk sample method with estimated walks")
+dynesty.dynesty._SAMPLING["rwalk"] = sample_rwalk_parallel_with_act
+dynesty.nestedsamplers._SAMPLING["rwalk"] = sample_rwalk_parallel_with_act
+
+with MPIPool() as pool:
+    if not pool.is_master():
+        pool.wait()
+        sys.exit(0)
+    POOL_SIZE = pool.size
+
+    init_sampler_kwargs = dict(
+        nlive=nlive,
+        sample="rwalk",
+        bound="multi",
+        walks=walks,
+    )
+    for key in priors:
+        logger.info(f"{key}: {priors[key]}")
+
+    resume_file = "{}/{}_checkpoint_resume.pickle".format(outdir, label)
+
+    ndim = len(sampling_keys)
+    sampler, sampling_time = read_saved_state(resume_file)
+    print(sampler)
+    print('####')
+    if sampler is False:
+        sampler = NestedSampler(
+            log_likelihood_function,
+            prior_transform_function,
+            ndim,
+            pool=pool,
+            queue_size=POOL_SIZE,
+            print_func=dynesty.results.print_fn_fallback,
+            use_pool=dict(
+                update_bound=True,
+                propose_point=True,
+                prior_transform=True,
+                loglikelihood=True,
+            ),
+            **init_sampler_kwargs,
+        )
+    else:
+        sampler.prior_transform = prior_transform_function
+        sampler.loglikelihood = log_likelihood_function
+        sampler.evolve_point = sample_rwalk_parallel_with_act
+        #sampler.sampling = sample_rwalk_parallel_with_act
+        sampler.pool = pool
+        sampler.M = pool.map
+    logger.info(
+        f"Starting sampling for job {label}, with pool size={POOL_SIZE} "
+        f"and check_point_deltaT={check_point_deltaT}"
+    )
+
+    sampler_kwargs = dict(
+        dlogz=dlogz
+    )
+    for it, res in enumerate(sampler.sample(**sampler_kwargs)):
+
+        (
+            worst,
+            ustar,
+            vstar,
+            loglstar,
+            logvol,
+            logwt,
+            logz,
+            logzvar,
+            h,
+            nc,
+            worst_it,
+            boundidx,
+            bounditer,
+            eff,
+            delta_logz,
+        ) = res
+
+        i = it - 1
+        print(i)
+        dynesty.results.print_fn_fallback(res, i, sampler.ncall, dlogz=dlogz)
+
+        if it == 0 or it % n_check_point != 0:
+            continue
+
+        sampling_time += (datetime.datetime.now() - t0).total_seconds()
+        t0 = datetime.datetime.now()
+
+        if os.path.isfile(resume_file):
+            last_checkpoint_s = time.time() - os.path.getmtime(resume_file)
+        else:
+            last_checkpoint_s = np.inf
+        if last_checkpoint_s > check_point_deltaT:
+            write_current_state(sampler, resume_file, sampling_time)
+            plot_current_state(sampler, sampling_keys, outdir, label)
+        #add prior transform function back in
+        sampler.prior_transform = prior_transform_function
+        sampler.loglikelihood = log_likelihood_function
+        sampler.evolve_point = sample_rwalk_parallel_with_act
+    # Adding the final set of live points.
+    for it_final, res in enumerate(sampler.add_live_points()):
+        pass
+
+    # Create a final checkpoint and set of plots
+    write_current_state(sampler, resume_file, sampling_time)
+    plot_current_state(sampler, sampling_keys, outdir, label)
+
+    sampling_time += (datetime.datetime.now() - t0).total_seconds()
+
+    out = sampler.results
+    weights = np.exp(out["logwt"] - out["logz"][-1])
+
+    result = bilby.core.result.Result(
+        label=label, outdir=outdir, search_parameter_keys=sampling_keys
+    )
+    result.priors = priors
+    result.samples = dynesty.utils.resample_equal(out.samples, weights)
+
+    result.log_likelihood_evaluations = reorder_loglikelihoods(
+        unsorted_loglikelihoods=out.logl,
+        unsorted_samples=out.samples,
+        sorted_samples=result.samples,
+    )
+
+    result.log_evidence = out.logz[-1]
+    result.log_evidence_err = out.logzerr[-1]
+    result.log_noise_evidence = likelihood.noise_log_likelihood()
+    result.log_bayes_factor = result.log_evidence - result.log_noise_evidence
+    result.injection_parameters = GW_injection_parameters
+    result.samples_to_posterior()
+    result.priors = priors
+    result.save_to_file(extension="json")
+
+        # result = bilby.run_sampler(likelihood=likelihood, priors=priors, \
+        #                            sampler='dynesty', npoints=n_live, \
+        #                            injection_parameters=injection_parameters, \
+        #                            outdir=outdir, label=label, \
+        #                            conversion_function=bilby.gw.conversion.generate_all_bns_parameters)
+        # result.plot_corner()
