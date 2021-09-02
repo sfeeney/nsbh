@@ -10,6 +10,9 @@ import os.path as osp
 import getdist as gd
 import getdist.plots as gdp
 import lalsimulation as lalsim
+import sklearn.decomposition as skd
+import ns_eos_aw as nseos
+import corner
 
 
 def comp_masses_to_chirp_q(m_1, m_2):
@@ -77,6 +80,19 @@ def lal_inf_sd_gammas_mass_to_lambda(fam, mass_m_sol):
     
     return 2.0 / 3.0 * love / comp ** 5
 
+def lal_inf_sd_gammas_mass_to_radius(fam, mass_m_sol):
+
+    '''
+    Modified from LALInferenceSDGammasMasses2Lambdas:
+    https://lscsoft.docs.ligo.org/lalsuite/lalinference/_l_a_l_inference_8c_source.html#l02364
+    '''
+
+    # calculate radius(m|eos) in km
+    mass_kg = mass_m_sol * m_sol_kg
+    rad = lalsim.SimNeutronStarRadius(mass_kg, fam) / 1.0e3
+    
+    return rad
+
 def dd2_lambda_from_mass(m):
     return 1.60491e6 - 23020.6 * m**-5 + 194720. * m**-4 - 658596. * m**-3 \
         + 1.33938e6 * m**-2 - 1.78004e6 * m**-1 - 992989. * m + 416080. * m**2 \
@@ -99,6 +115,7 @@ lal_mrsun_si = 1.476625061404649406193430731479084713e3 # LAL_MRSUN_SI = LAL_GMS
 big_g = 6.67430e-11 # m^3/kg/s^2
 c = 2.998e8 # m/s
 log_zero = -1.0e10
+m_ns_std = 1.4 # m_sol
 
 # settings
 n_procs = 96
@@ -106,7 +123,9 @@ n_eos_samples_per_proc = 12 # 160
 n_eos_samples = n_procs * n_eos_samples_per_proc
 n_m_samples = 100
 n_inds = 4
-log_zero = -1.0e10
+thin = False
+vol_limit = False
+mass_prior_volume = False
 
 # data sample settings
 snr_thresh = 12.0
@@ -137,7 +156,7 @@ uniform_bh_masses = True
 uniform_ns_masses = True
 low_metals = True
 broad_bh_spins = True
-seobnr_waveform = True
+seobnr_waveform = False
 if seobnr_waveform:
     waveform_approximant = 'SEOBNRv4_ROM_NRTidalv2_NSBH'
     aligned_spins = True
@@ -163,9 +182,6 @@ if uniform_ns_masses:
 else:
     m_max_ns = 2.0
 
-# useful grid in neutron star mass
-m_ns_grid = np.linspace(m_min_ns, m_max_ns, 1000)
-
 # filename stub
 if ifo_list == ['H1', 'L1', 'V1']:
     ifo_str = ''
@@ -189,632 +205,181 @@ if aligned_spins:
     label_str += '_aligned'
 base_label = label_str.format(duration, minimum_frequency, \
                               reference_frequency)
+if vol_limit:
+    base_label = base_label + '_vol_lim'
+if mass_prior_volume:
+    base_label = base_label + '_inc_mpv'
 
 
+# @TODO: selection! both with and without prior effect
+# @TODO: tidy up, inc. module
 
 
+# useful grid in neutron star mass
+n_grid = 1000
+m_ns_grid = np.linspace(m_min_ns, m_max_ns, n_grid)
 
-# very temporary
+# read in some draws from the gamma prior
+gamma_prior_draws = np.genfromtxt('data/ns_eos_gamma_prior_draws.txt', \
+                                  delimiter=',')
+
+# read in some mass-lambda curves for EOS prior draws to 
+# indicate prior in mass-Lambda space
+m_l_prior_draws = np.genfromtxt('data/ns_eos_m_l_prior_draws.txt', \
+                                delimiter=',')
+m_l_prior_ms = m_l_prior_draws[:, 0]
+m_l_prior_ls = m_l_prior_draws[:, 1:]
+#l_m_min = np.nanmin(m_l_prior_ls, axis=1)
+#l_m_max = np.nanmax(m_l_prior_ls, axis=1)
+l_m_min = np.nanpercentile(m_l_prior_ls, 0.5, axis=1)
+l_m_max = np.nanpercentile(m_l_prior_ls, 99.5, axis=1)
+
+# read standard-NS lambdas and radii
+ns_std_props = np.genfromtxt('data/ns_eos_std_ns_l_r_prior_draws.txt', \
+                             delimiter=',')
+
 # read in emcee outputs
-import corner
-samples = np.genfromtxt('temp.txt')
-print(samples.shape)
-pars_in = np.array([0.66613725, 0.4543233, -0.087498, 0.0042616])
-pars_in = np.array([8.089683409048020746e-01, 2.943299329857296254e-01, -4.825667425191786097e-02, 1.736697072439619127e-03])
-pars_in = np.array([1.02518133e+00, 1.04993557e-01, -1.82736598e-02, 6.00270721e-04])
+filename = osp.join(outdir, base_label + '_eos_emcee_samples.txt')
+samples = np.genfromtxt(filename)
+if thin:
+    with open(filename) as f:
+        header = f.readline()
+        header = f.readline()
+    n_thin = int(header.strip().split(' ')[-1])
+else:
+    n_thin = 1
+n_samples = samples.shape[0]
+#pars_in = np.array([0.66613725, 0.4543233, -0.087498, 0.0042616])
+#pars_in = np.array([8.089683409048020746e-01, 2.943299329857296254e-01, \
+#                    -4.825667425191786097e-02, 1.736697072439619127e-03])
+#pars_in = np.array([1.02518133e+00, 1.04993557e-01, \
+#                    -1.82736598e-02, 6.00270721e-04])
 par_labels = [r'$\gamma_{:d}$'.format(i) for i in range(4)]
-fig = corner.corner(samples[:, 0: 4], plot_datapoints=True, \
+limits = np.array([np.min(gamma_prior_draws, axis=0), \
+                   np.max(gamma_prior_draws, axis=0)]).T
+fig = corner.corner(gamma_prior_draws, plot_datapoints=True, \
                     plot_density=False, plot_contours=False, \
-                    truths=pars_in, labels=par_labels)
+                    labels=par_labels, range=limits, \
+                    hist_kwargs={'density': True, 'color': 'grey', \
+                                 'ls': '--', 'lw': lw})
+corner.corner(samples[::n_thin, 0: 4], plot_datapoints=True, \
+                    plot_density=False, plot_contours=False, \
+                    labels=par_labels, range=limits, fig=fig, \
+                    data_kwargs={'color': 'C0'}, \
+                    hist_kwargs={'density': True, 'ec': 'C0', 'lw': lw})
 for ax in fig.axes:
     ax.grid(False)
-fig.savefig('temp_post.pdf')
+filename = osp.join(outdir, base_label + '_eos_emcee_post.pdf')
+fig.savefig(filename, bbox_inches='tight')
 
-exit()
+# define pca basis
+gammas = np.genfromtxt('data/ns_eos_sd_gammas_wysocki.txt', \
+                       delimiter=',')
+gammas_mean = np.mean(gammas, axis=0)
+gammas_std = np.std(gammas, axis=0)
+gammas_rs = (gammas - gammas_mean) / gammas_std
+pca = skd.PCA(n_components=n_inds)
+pca.fit(gammas_rs)
+gammas_rs_tf = pca.transform(gammas_rs)
+gammas_rs_tf_min = np.min(gammas_rs_tf, axis=0)
+gammas_rs_tf_max = np.max(gammas_rs_tf, axis=0)
 
+# loop over (some) samples and plot mass-lambda curves
+if not thin:
+    n_thin = max(1, int(n_samples / 1000))
+n_std = int(np.ceil(n_samples / n_thin))
+lambda_ns_std = np.zeros(n_std)
+r_ns_std = np.zeros(n_std)
+i_std = 0
+fig, ax = mp.subplots(1, 1)
+for i in range(0, n_samples, n_thin):
+    
+    # deproject into gamma space
+    #thetas = samples[int(n_samples / 2) + i, 0: 4]
+    thetas = samples[i, 0: 4]
+    gammas = gammas_std * pca.inverse_transform(thetas) + \
+             gammas_mean
 
-
-
-
-# @TODO
-# DONE: how many mass / EOS samples have non-log-zero likelihoods
-# how many sources am i using in comparison to Landry et al.?
-# DONE: plot of weights
-# DONE: n_eff per eos
-# 2D plot of Lambda and m_ns indicating sampling range
-# smaller subset of best m/lambda constraints (but Lambda is derived...)
-# DONE: check out bilby EOS sampling - seems to be single event only
-# what's actually the issue here? that it's hard to get an EOS that 
-#  actually matches all of the data well? that the data are therefore 
-#  constraining? that the exploration is therefore super inefficient?
-
-
-
-# read in datafile. do we need to compile multiple files?
-n_runs = 0
-compile = True
-if compile:
-
-    # read in files
-    data_list = []
-    for i in range(n_procs):
-        stub = '_eos_samples_{:d}_of_{:d}.txt'.format(i, n_procs)
-        data_file = osp.join(outdir, base_label + stub)
-        data = np.genfromtxt(data_file)
-        data_list.append(data)
-        n_runs += data.shape[0]
-    data = np.concatenate(data_list)
-    n_targets = data.shape[1] - n_inds - 2
-
-    # store processed data
-    np.savetxt(osp.join(outdir, base_label + '_eos_samples.txt'), data)
-    fname = osp.join(outdir, base_label + \
-                     '_eos_samples_*_of_{:d}.txt'.format(n_procs))
-    print('results compiled. consider "rm ' + fname + '"')
-
-else:
-
-    # read in compiled results
-    data_file = osp.join(outdir, base_label + '_eos_samples.txt')
-    data = np.genfromtxt(data_file)
-    n_runs = data.shape[0]
-    n_targets = data.shape[1] - n_inds - 2
-
-# how many samples have non-log-zero likelihoods? seems like roughly half
-non_log_zero = data[:, 0] > (log_zero / 10.0)
-print(np.sum(non_log_zero), '/', len(non_log_zero), 'non-log-zero samples')
-#mp.hist(np.exp(all_samples[non_log_zero, 0]), bins=50)
-#mp.show()
-
-# n_eff for full sample and by EOS
-print(n_eff_from_log_weights(data[:, 0]))
-print(n_eff_from_log_weights(data[:, 0] + data[:, 1]))
-n_effs = np.zeros(n_eos_samples)
-eos_post = np.zeros(n_eos_samples)
-for i in range(n_eos_samples):
-    log_weights = data[i * n_m_samples: (i + 1) * n_m_samples, 0]
-    n_effs[i] = n_eff_from_log_weights(log_weights)
-    eos_post[i] = np.mean(np.exp(log_weights))
-eos_post /= np.max(eos_post)
-for i in range(n_eos_samples):
-    log_weights = data[i * n_m_samples: (i + 1) * n_m_samples, 0]
-    #print(i, np.max(log_weights), n_effs[i], eos_post[i])
-#mp.hist(n_effs)
-#mp.show()
-#mp.hist(eos_post / np.max(eos_post))
-#mp.show()
-
-# find highest-posterior samples and use their gammas to generate
-# a list of mass->lambda mappings
-n_map = 10
-mkr_map = ['+', '8', 'p', '*', 'h', 'H', '1', '2', '3', '4']
-i_map = np.argsort(-data[:, 0])[0: n_map]
-fams_map = []
-gammas = np.zeros(n_inds)
-for i in range(n_map):
-    gammas_i = data[i_map[i], 2: 6]
-    #print(data[i_map[i], 0])
-    if not np.array_equal(gammas_i, gammas):
-        gammas = gammas_i
-        fam = lal_inf_sd_gammas_fam(gammas)
-        m_max_eos = lalsim.SimNeutronStarMaximumMass(fam) / m_sol_kg
-    fams_map.append(fam)
-
-# plot mass-lambda relations for all sampled EOSs
-n_grid = 100
-lambdas = np.zeros(n_grid)
-for i in range(n_eos_samples):
-#for i in range(100):
-    gammas = data[i * n_m_samples, 2: 6]
+    # calculate lambdas on mass grid
+    n_grid = 1000
+    lambdas = np.zeros(n_grid)
     fam = lal_inf_sd_gammas_fam(gammas)
     m_max_eos = lalsim.SimNeutronStarMaximumMass(fam) / m_sol_kg
-    ms = np.linspace(m_min_ns, m_max_eos * 0.99999999, n_grid)
-    for j in range(n_grid):
-        lambdas[j] = lal_inf_sd_gammas_mass_to_lambda(fam, ms[j])
-    if i == 0:
-        mp.plot(ms, lambdas, color='k', alpha=0.05, label='prior draws')
-    else:
-        mp.plot(ms, lambdas, color='k', alpha=0.05)
-ms = np.linspace(m_min_ns, m_max_ns, n_grid)
-mp.plot(ms, dd2_lambda_from_mass(ms), 'r--', label='truth')
-rect = mpp.Rectangle([m_min_ns, 0.0], m_max_ns - m_min_ns, 4500.0, \
-                     facecolor='none', edgecolor='C1', ls=':', \
-                     zorder=10, label='per-object prior')
-mp.gca().add_patch(rect)
-mp.xlabel(r'$m_{\rm ns}\,[m_\odot]$')
-mp.ylabel(r'$\Lambda$')
-mp.gca().grid(False)
-leg = mp.legend(loc='upper right', handlelength=3.0, frameon=False)
-for line in leg.get_lines():
-    line.set_linewidth(lw)
-    line.set_alpha(1.0)
-mp.savefig(osp.join(outdir, base_label + '_prior_mass_lambda_relations.pdf'), \
-           bbox_inches='tight')
-mp.close()
-
-# read injections from file
-par_file = base_label + '.txt'
-raw_pars = np.genfromtxt('data/' + par_file, \
-                         dtype=None, names=True, delimiter=',', \
-                         encoding=None)
-det = raw_pars['snr'] >= snr_thresh
-if remnants_only:
-    det = np.logical_and(det, raw_pars['remnant_mass'] > min_remnant_mass)
-raw_pars = raw_pars[det]
-ids = np.array([int(i_sim.split(':')[-1]) for i_sim in \
-                raw_pars['simulation_id']])
-snrs = raw_pars['snr']
-i_sort = np.argsort(snrs)[::-1]
-target_snrs = snrs[i_sort]
-target_ids = ids[i_sort]
-target_iotas = raw_pars['inclination'][i_sort]
-
-# loop over targets to read in the merger NS mass-lambda posteriors
-#n_targets = len(target_ids)
-samples = []
-truths = []
-post_at_true_m_ns = []
-m_ns_like_support = []
-post_at_true_m_l_ns = []
-m_l_ns_posts = []
-skip = np.full(n_targets, False)
-for i in range(n_targets):
-
-    # read in results file, which contains tonnes of info
-    label = base_label + '_inj_{:d}'.format(target_ids[i])
-    if use_polychord:
-        label = 'pc_' + label
-    if zero_spins:
-        label += '_zero_spins'
-    if tight_loc:
-        label += '_tight_loc'
-    elif fixed_ang:
-        label += '_fixed_ang'
-    if n_live != 1000:
-        label += '_nlive_{:04d}'.format(n_live)
-    res_file = label + '_result.json'
-    #print(osp.join(outdir, res_file))
-    if not osp.exists(osp.join(outdir, res_file)):
-        skip[i] = True
-        samples.append(None)
-        truths.append(None)
-        post_at_true_m_ns.append(None)
-        m_ns_like_support.append(None)
-        post_at_true_m_l_ns.append(None)
-        continue
-    result = bilby.result.read_in_result(filename=osp.join(outdir, res_file))
-
-    # NB: result.injection_parameters contains incorrect IMRPhenom iotas
-    # due to a bug in bilby!
-    all_pars = bc.generate_all_bns_parameters(result.injection_parameters)
-    truths.append([all_pars['mass_1'], \
-                   all_pars['a_1'], 0.0, \
-                   target_iotas[i], \
-                   all_pars['luminosity_distance'], \
-                   all_pars['mass_ratio'], \
-                   all_pars['lambda_2'], \
-                   all_pars['lambda_tilde'], \
-                   all_pars['spin_1z'], \
-                   all_pars['mass_2'], \
-                   all_pars['mass_1_source'], \
-                   all_pars['mass_2_source']])
-
-    # if sampling with polychord optionally use full, variable weight 
-    # posterior samples: bilby takes the equal-weight posterior samples 
-    # to build its result.posterior. there are no distance samples this
-    # way though!
-    if use_polychord and use_weighted_samples:
-
-        # set up required paramnames file
-        if aligned_spins:
-            template = 'nsbh_aligned_spins.paramnames'
-        else:
-            template = 'nsbh_precess_spins.paramnames'
-        gd_root = osp.join(outdir, osp.join('chains', label))
-        gd_pars = gd_root + '.paramnames'
-        #print(gd_pars)
-        if not osp.exists(gd_pars):
-
-            # prevent race conditions: can have all processes trying 
-            # to create a symlink simultaneously, with the slow ones
-            # finding it's already been created despite not existing 
-            # before this if statement
-            try:
-                os.symlink(template, gd_pars)
-            except OSError as e:
-                if e.errno != errno.EEXIST:
-                    raise e
-            
-
-        # read in samples and fill in derived parameters
-        gd_samples = gd.loadMCSamples(gd_root)
-        pars = gd_samples.getParams()
-        m_1, m_2 = chirp_q_to_comp_masses(pars.chirp_mass, \
-                                          pars.mass_ratio)
-        gd_samples.addDerived(m_1, name='mass_1', label=r'm_{\rm BH}')
-        gd_samples.addDerived(m_2, name='mass_2', label=r'm_{\rm NS}')
-        if aligned_spins:
-            gd_samples.addDerived(np.abs(pars.chi_1), name='a_1', label='a_1')
-
-        # optionally importance sample the input mass priors
-        if imp_sample:
-
-            # extract posterior samples relevant for reweighting
-            m_c_samples = pars.chirp_mass
-            q_inv_samples = pars.mass_ratio
-            m_1_samples, m_2_samples = \
-                chirp_q_to_comp_masses(m_c_samples, q_inv_samples)
-
-            # define importance weights. we want to convert from the 
-            # prior we used to sample, which is uniform in chirp mass 
-            # and mass to the prior we used to simulate, which is 
-            # uniform in component masses. we technically used a different
-            # redshift prior too, but they're almost identical in practice.
-            # note that our sampling prior extends into regions where the 
-            # component-mass prior is zero: apply tiny weights to these 
-            # values
-            mass_weights = prior_change_jac(m_c_samples, q_inv_samples)
-            m_1_mask = np.logical_and(m_1_samples >= m_min_bh, \
-                                      m_1_samples <= m_max_bh)
-            m_2_mask = np.logical_and(m_2_samples >= m_min_ns, \
-                                      m_2_samples <= m_max_ns)
-            m12_mask = np.logical_and(m_1_mask, m_2_mask)
-            mass_weights *= m12_mask
-            mass_weights += ~m12_mask * 1.0e-10
-            weights = mass_weights / np.sum(mass_weights)
-            gd_samples.reweightAddingLogLikes(-np.log(weights))
-
-        # build up list of samples objects
-        samples.append(gd_samples)
-
-    else:
-        
-        # test posterior is correctly sampled
-        distance_label = r'(d_L - d_L^{\rm true})/d_L^{\rm true}'
-        try:
-            delta_distance = \
-                (result.posterior.luminosity_distance - \
-                 result.injection_parameters['luminosity_distance']) / \
-                result.injection_parameters['luminosity_distance']
-        except ValueError:
-            skip[i] = True
-            samples.append(None)
-            post_at_true_m_ns.append(None)
-            m_ns_like_support.append(None)
-            post_at_true_m_l_ns.append(None)
-            continue
-
-        # optionally importance sample the input mass priors
-        if imp_sample:
-
-            # extract posterior samples relevant for reweighting
-            m_c_samples = result.posterior.chirp_mass
-            q_inv_samples = result.posterior.mass_ratio
-            m_1_samples, m_2_samples = \
-                chirp_q_to_comp_masses(m_c_samples, q_inv_samples)
-
-            # define importance weights. we want to convert from the 
-            # prior we used to sample, which is uniform in chirp mass 
-            # and mass to the prior we used to simulate, which is 
-            # uniform in component masses. we technically used a different
-            # redshift prior too, but they're almost identical in practice.
-            # note that our sampling prior extends into regions where the 
-            # component-mass prior is zero: apply tiny weights to these 
-            # values
-            mass_weights = prior_change_jac(m_c_samples, q_inv_samples)
-            m_1_mask = np.logical_and(m_1_samples >= m_min_bh, \
-                                      m_1_samples <= m_max_bh)
-            m_2_mask = np.logical_and(m_2_samples >= m_min_ns, \
-                                      m_2_samples <= m_max_ns)
-            m12_mask = np.logical_and(m_1_mask, m_2_mask)
-            mass_weights *= m12_mask
-            mass_weights += ~m12_mask * 1.0e-10
-            weights = mass_weights / np.sum(mass_weights)
-
-        else:
-
-            weights = np.ones(len(result.posterior.luminosity_distance))
-            weights /= np.sum(weights)
-
-        # convert to GetDist MCSamples object
-        if aligned_spins:
-            gd_samples = np.array([result.posterior.a_1, \
-                                   result.posterior.mass_1, \
-                                   delta_distance, \
-                                   result.posterior.iota, \
-                                   result.posterior.mass_ratio, \
-                                   result.posterior.lambda_2, \
-                                   result.posterior.lambda_tilde, \
-                                   result.posterior.chi_1, \
-                                   result.posterior.mass_2, \
-                                   result.posterior.mass_1_source, \
-                                   result.posterior.mass_2_source]).T
-            samples.append(gd.MCSamples(samples=gd_samples, \
-                                        names=['a_1', 'mass_1', \
-                                               'distance', 'iota', \
-                                               'q', 'lambda_2', \
-                                               'lambda_tilde', 'chi_1', \
-                                               'mass_2', 'mass_1_source', \
-                                               'mass_2_source'], \
-                                        labels=['a_1', r'm_{\rm BH}', \
-                                                distance_label, r'\iota', \
-                                                r'm_{\rm NS}/m_{\rm BH}', \
-                                                r'\Lambda_{\rm NS}', \
-                                                r'\tilde{\Lambda}', \
-                                                r'\chi_1', r'm_{\rm NS}', \
-                                                r'm_{\rm BH}^{\rm source}', \
-                                                r'm_{\rm NS}^{\rm source}'], \
-                                        ranges=gd_ranges, weights=weights))
-        else:
-            gd_samples = np.array([result.posterior.a_1, \
-                                   result.posterior.mass_1, \
-                                   delta_distance, \
-                                   result.posterior.iota, \
-                                   result.posterior.mass_ratio, \
-                                   result.posterior.lambda_2, \
-                                   result.posterior.lambda_tilde, \
-                                   result.posterior.spin_1z, \
-                                   result.posterior.mass_2, \
-                                   result.posterior.mass_1_source, \
-                                   result.posterior.mass_2_source]).T
-            samples.append(gd.MCSamples(samples=gd_samples, \
-                                        names=['a_1', 'mass_1', \
-                                               'distance', 'iota', \
-                                               'q', 'lambda_2', \
-                                               'lambda_tilde', 'chi_1', \
-                                               'mass_2', 'mass_1_source', \
-                                               'mass_2_source'], \
-                                        labels=['a_1', r'm_{\rm BH}', \
-                                                distance_label, r'\iota', \
-                                                r'm_{\rm NS}/m_{\rm BH}', r'\Lambda_{\rm NS}', \
-                                                r'\tilde{\Lambda}', \
-                                                r'\chi_1', r'm_{\rm NS}', \
-                                                r'm_{\rm BH}^{\rm source}', \
-                                                r'm_{\rm NS}^{\rm source}'], \
-                                        ranges=gd_ranges, weights=weights))
-
-    # extract m_ns and m_ns-Lambda_ns GetDist posteriors. use the 
-    # former to determine the range of m_ns over which the 
-    # likelihood has support, which we'll use for sampling EOSs.
-    # we'll use the 2D posteriors in the EOS inference itself.
-    m_ns_post = samples[-1].get1DDensity('mass_2')
-    m_ns_post_grid = m_ns_post.Prob(m_ns_grid)
-    i_support = np.where(m_ns_post_grid > support_thresh)
-    if i_support[0][0] == 0:
-        i_support_min = 0
-    else:
-        i_support_min = i_support[0][0] - 1
-    if i_support[0][-1] == len(m_ns_grid) - 1:
-        i_support_max = len(m_ns_grid) - 1
-    else:
-        i_support_max = i_support[0][-1] + 1
-    m_ns_like_support.append(np.array([m_ns_grid[i_support_min], \
-                                       m_ns_grid[i_support_max]]))
-    post_at_true_m_ns.append(m_ns_post.Prob(truths[-1][9])[0])
-    m_l_ns_post = samples[-1].get2DDensity('mass_2', 'lambda_2', \
-                                           normalized=False)
-    post_at_true_m_l_ns.append(m_l_ns_post(truths[-1][9], \
-                                           truths[-1][6])[0, 0])
-    m_l_ns_posts.append(m_l_ns_post)
-
-
-# snr-ordered colouring
-n_targets = len(samples)
-cm = mpcm.get_cmap('plasma')
-cols = [mpc.rgb2hex(cm(x)) for x in np.linspace(0.2, 0.8, n_targets)[::-1]]
-
-
-# numerical integration tests
-n_grid = 1000 # @TODO: test this out. 100, 1000 and 10000 agree pretty well
-lambdas = np.zeros(n_grid)
-likes = np.zeros(n_grid)
-eos_log_post = np.zeros(n_eos_samples)
-for i in range(n_eos_samples):
-#for i in range(100):
-#for i in i_map:
-
-    # extract gammas and use to define mass grid
-    gammas = data[i * n_m_samples, 2: 6]
-    #gammas = data[i, 2: 6]
-    fam = lal_inf_sd_gammas_fam(gammas)
-    m_max_eos = lalsim.SimNeutronStarMaximumMass(fam) / m_sol_kg
-    ms = np.linspace(m_min_ns, m_max_eos * 0.99999999, n_grid)
+    masses = np.linspace(m_min_ns, m_max_eos * 0.99999999, n_grid)
 
     # calculate lambdas on that grid
     for j in range(n_grid):
-        lambdas[j] = lal_inf_sd_gammas_mass_to_lambda(fam, ms[j])
+        lambdas[j] = lal_inf_sd_gammas_mass_to_lambda(fam, masses[j])
 
-    # loop over targets performing integrals
-    for k in range(n_targets):
+    # plot!
+    if i == 0:
+        mp.plot(masses, lambdas, color='C1', alpha=0.05, \
+                label='posterior samples')
+    else:
+        mp.plot(masses, lambdas, color='C1', alpha=0.05)
 
-        for j in range(n_grid):
+    # calculate features of "standard" neutron star
+    lambda_ns_std[i_std] = lal_inf_sd_gammas_mass_to_lambda(fam, m_ns_std)
+    r_ns_std[i_std] = lal_inf_sd_gammas_mass_to_radius(fam, m_ns_std)
+    i_std += 1
 
-            likes[j] = m_l_ns_posts[k](ms[j], lambdas[j])[0, 0]
+# overplot prior and ground truth
+mp.fill_between(m_l_prior_ms, l_m_min, 0.0, color='lightgrey', label='non-physical')
+#                color='lightgrey', alpha=0.5, zorder=10)
+mp.fill_between(m_l_prior_ms, l_m_max, 4500.0, color='lightgrey')
+#                color='lightgrey', alpha=0.5, zorder=10)
+mp.plot(m_l_prior_ms, dd2_lambda_from_mass(m_l_prior_ms), \
+        color='black', ls='--', label='truth')
+mp.xlim(m_min_ns, m_max_ns)
+mp.ylim(0.0, 4500.0)
+mp.xlabel(r'$m_{\rm NS}\,[M_\odot]$')
+mp.ylabel(r'$\Lambda_{\rm NS}$')
+leg = mp.legend(loc='upper right', handlelength=3.0)
+for line in leg.get_lines():
+    line.set_linewidth(lw)
+    line.set_alpha(1.0)
+ax.grid(False)
+filename = osp.join(outdir, base_label + '_eos_emcee_mass_lambda_post.pdf')
+fig.savefig(filename, bbox_inches='tight')
 
-        # correct for -ve likelihoods and do trapezoid integration
-        neg_like = likes < 0.0
-        likes[neg_like] = 0.0
-        integral = np.trapz(likes, ms)
-        eos_log_post[i] += np.log(integral)
+# calculate radius of DD2 NS with standard mass using AW's code
+sim = {'mass1': 10.0, 'spin1x': 0.0, 'spin1y': 0.0, \
+       'spin1z': 0.0, 'mass2': m_ns_std, 'spin2x': 0.0, \
+       'spin2y': 0.0, 'spin2z': 0.0}
+dd2_std_ns = nseos.Foucart(sim, eos="DD2")
 
-        # @TODO: scipy quad?
-
-
-n_row, n_col = 2, 2
-fig, axes = mp.subplots(n_row, n_col, figsize=(10, 10))
+# plot constraints on deformability and radius of standard NS
+fig, axes = mp.subplots(1, 2, figsize=(10, 5))
+axes[0].hist(lambda_ns_std, histtype='step', lw=lw, density=True, \
+             label='posterior')
+axes[0].hist(ns_std_props[:, 0], histtype='step', lw=lw, \
+             color='grey', ls='--', density=True, label='prior')
+axes[0].axvline(dd2_lambda_from_mass(m_ns_std), color='C1', ls='-.', \
+                label='truth')
+axes[0].set_xlabel(r'$\Lambda_{\rm NS}(1.4\,M_\odot)$')
+axes[0].set_ylabel(r'${\rm density}$')
+leg = axes[0].legend(loc='upper right', handlelength=3.0)
+for line in leg.get_lines():
+    line.set_linewidth(lw)
+axes[1].hist(r_ns_std, histtype='step', lw=lw, density=True)
+axes[1].hist(ns_std_props[:, 1], histtype='step', lw=lw, \
+             color='grey', ls='--', density=True)
+axes[1].axvline(dd2_std_ns.r_ns / 1.0e3, color='C1', ls='-.')
 for i in range(2):
-    for j in range(2):
-        i_ind = j * 2 + i
-        axes[j, i].plot(data[0:: n_m_samples, 2 + i_ind], eos_log_post, ',')
-        axes[j, i].set_xlabel(r'$\gamma_' + '{:d}'.format(i_ind) + r'$')
-        axes[j, i].set_ylabel(r'$\log{\rm P}$')
+    axes[i].grid(False)
+    axes[i].yaxis.set_ticks([])
+axes[1].set_xlabel(r'$r_{\rm NS}(1.4\,M_\odot)\,[{\rm km}]$')
+fig.subplots_adjust(wspace=0, hspace=0)
+filename = osp.join(outdir, base_label + '_eos_emcee_l_r_std_post.pdf')
+fig.savefig(filename, bbox_inches='tight')
 
-print(eos_log_post[0: 10])
-
-fig.savefig('test.pdf')
-
-exit()
-
-
-# tweak output filename
-if use_polychord:
-    base_label = 'pc_' + base_label
-if imp_sample:
-    base_label = base_label + '_imp_sample'
-if use_polychord and use_weighted_samples:
-    base_label = base_label + '_weighted_samples'
-
-# generate figure and plot!
-n_col = 8
-n_row = int(np.ceil(n_targets / float(n_col)))
-#n_row = 2
-height = 2.86 * n_row
-n_ext = n_col * n_row - n_targets
-fig, axes = mp.subplots(n_row, n_col, figsize=(20, height))
-g = gdp.get_single_plotter()
-i_x = 0
-i_y = 0
-for i in range(n_row * n_col):
-    
-    if i < n_targets:
-
-        if skip[i]:
-            fig.delaxes(axes[i_y, i_x])
-            i_x += 1
-            if i_x == axes.shape[1]:
-                i_x = 0
-                i_y += 1
-            continue
-
-        # plot mass constraint
-        g.plot_1d(samples[i], 'mass_2', color=cols[i], \
-                  ax=axes[i_y, i_x], normalized=True)
-        label = r'$\rho=' + '{:4.1f}'.format(target_snrs[i]) + '$'
-        axes[i_y, i_x].text(0.95, 0.95, label, ha='right', va='top', \
-                            transform=axes[i_y, i_x].transAxes)
-        axes[i_y, i_x].axvline(truths[i][9], color='C1', ls='--')
-        axes[i_y, i_x].grid(False)
-        axes[i_y, i_x].set_xlim(m_min_ns * 0.99, m_max_ns * 1.01)
-        
-        # indicate range of significant posterior support
-        axes[i_y, i_x].axvspan(m_min_ns * 0.99, m_ns_like_support[i][0], \
-                               color='lightgrey')
-        axes[i_y, i_x].axvspan(m_ns_like_support[i][1], m_max_ns * 1.01, \
-                               color='lightgrey')
-
-        # overlay histogram of mass samples
-        axes[i_y, i_x].hist(data[:, n_inds + 2 + i], density=True, histtype='step')
-
-        # remove axis labels where they would otherwise overlap
-        if i_x > 0:
-            axes[i_y, i_x].get_yaxis().set_visible(False)
-        if i_y < n_row - 1:
-            if i_y != n_row - 2 or i_x <= n_col - n_ext - 1:
-                axes[i_y, i_x].get_xaxis().set_visible(False)
-
-    else:
-
-        # remove unnecessary axes
-        fig.delaxes(axes[i_y, i_x])
-
-    # determine position in grid of axes
-    i_x += 1
-    if i_x == axes.shape[1]:
-        i_x = 0
-        i_y += 1
-
-# save plot
-fig.subplots_adjust(wspace=0.0, hspace=0.0)
-fig.savefig(osp.join(outdir, base_label + '_m_ns_constraints_eos_samples.pdf'), \
-            bbox_inches='tight')
-
-
-# ...and a lambda vs m_ns plot...
-fig, axes = mp.subplots(n_row, n_col, figsize=(20, height))
-g = gdp.get_single_plotter()
-i_x = 0
-i_y = 0
-for i in range(n_row * n_col):
-    
-    if i < n_targets:
-
-        # watch out for unfinished runs
-        if skip[i]:
-            fig.delaxes(axes[i_y, i_x])
-            i_x += 1
-            if i_x == axes.shape[1]:
-                i_x = 0
-                i_y += 1
-            continue
-
-        # plot distance and inclination constraints
-        g.plot_2d(samples[i], 'mass_2', 'lambda_2', colors=[cols[i]], \
-                  ax=axes[i_y, i_x], filled=True)
-        label = r'$\rho=' + '{:4.1f}'.format(target_snrs[i]) + '$'
-        axes[i_y, i_x].text(0.95, 0.95, label, ha='right', va='top', \
-                            transform=axes[i_y, i_x].transAxes)
-        axes[i_y, i_x].plot([truths[i][9]], [truths[i][6]], \
-                            marker='+', color='k')
-        axes[i_y, i_x].grid(False)
-        axes[i_y, i_x].set_xlim(m_min_ns * 0.75, m_max_ns)
-        axes[i_y, i_x].set_ylim(0.0, 4500)
-        
-        # indicate range of significant posterior support
-        axes[i_y, i_x].axvspan(m_min_ns * 0.75, m_ns_like_support[i][0], \
-                               color='lightgrey')
-        axes[i_y, i_x].axvspan(m_ns_like_support[i][1], m_max_ns * 1.01, \
-                               color='lightgrey')
-
-        # show highest-posterior samples
-        for j in range(n_map):
-            m_sample = data[i_map[j], n_inds + 2 + i]
-            lambda_sample = lal_inf_sd_gammas_mass_to_lambda(fams_map[j], \
-                                                             m_sample)
-            if lambda_sample > 4500.0:
-                axes[i_y, i_x].plot([m_sample], [4450.0], \
-                                    marker='^', color='k', markersize=1.0, \
-                                    markeredgecolor='none')
-                axes[i_y, i_x].plot([m_sample], [4450.0], \
-                                    marker='${:d}$'.format(j), color='darkblue', \
-                                    markersize=2.5, markeredgecolor='none')
-            elif lambda_sample < 0.0:
-                axes[i_y, i_x].plot([m_sample], [50.0], \
-                                    marker='v', color='k', markersize=1.0, \
-                                    markeredgecolor='none')
-                axes[i_y, i_x].plot([m_sample], [50.0], \
-                                    marker='${:d}$'.format(j), color='darkblue', \
-                                    markersize=2.5, markeredgecolor='none')
-            else:
-                axes[i_y, i_x].plot([m_sample], [lambda_sample], \
-                                    marker='.', color='k', markersize=1.0, \
-                                    markeredgecolor='none')
-                axes[i_y, i_x].plot([m_sample], [lambda_sample], \
-                                    marker='${:d}$'.format(j), color='darkblue', \
-                                    markersize=2.5, markeredgecolor='none')
-        
-        # remove axis labels where they would otherwise overlap
-        if i_x > 0:
-            axes[i_y, i_x].get_yaxis().set_visible(False)
-        if i_y < n_row - 1:
-            if i_y != n_row - 2 or i_x <= n_col - n_ext - 1:
-                axes[i_y, i_x].get_xaxis().set_visible(False)
-
-    else:
-
-        # remove unnecessary axes
-        fig.delaxes(axes[i_y, i_x])
-
-    # determine position in grid of axes
-    i_x += 1
-    if i_x == axes.shape[1]:
-        i_x = 0
-        i_y += 1
-
-# save plot
-fig.subplots_adjust(wspace=0.0, hspace=0.0)
-fig.savefig(osp.join(outdir, base_label + '_lambda_m_ns_constraints_eos_samples.pdf'), \
-            bbox_inches='tight')
-
-
-
-
+# report percentiles
+print('* * *')
+print('Lambda(1.4 M_sol) 95% and 68% interval and median:')
+print(np.percentile(lambda_ns_std, [2.5, 16.0, 50.0, 84.0, 97.5]))
+print('truth:', dd2_lambda_from_mass(m_ns_std))
+print('* * *')
+print('radius(1.4 M_sol) 95% and 68% interval and median [km]:')
+print(np.percentile(r_ns_std, [2.5, 16.0, 50.0, 84.0, 97.5]))
+print('truth:', dd2_std_ns.r_ns / 1.0e3)
+print('* * *')
